@@ -6,10 +6,10 @@ import { cx } from "@/lib/theme";
 export default function Navbar({ tone }) {
   const { audience, setAudience } = useAudience();
   const tabs = [
-    { id: "students", label: "Students" },
-    { id: "parents", label: "Parents" },
-    { id: "teachers", label: "Teachers" },
-    { id: "corporations", label: "Corporations" },
+    { id: "Workforce", label: "Workforce" },
+    { id: "Stem", label: "Stem" },
+    { id: "Compliance", label: "Compliance" },
+    { id: "Certifications", label: "Certifications" },
   ];
 
   return (

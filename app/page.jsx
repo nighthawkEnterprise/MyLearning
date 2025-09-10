@@ -14,14 +14,6 @@ const tones = {
     border200: "border-rose-200",
     bullet500: "bg-rose-500",
   },
-  emerald: {
-    bg50: "bg-emerald-50",
-    text600: "text-emerald-600",
-    bg600: "bg-emerald-600",
-    hoverBg500: "hover:bg-emerald-500",
-    border200: "border-emerald-200",
-    bullet500: "bg-emerald-500",
-  },
   indigo: {
     bg50: "bg-indigo-50",
     text600: "text-indigo-600",
@@ -30,44 +22,58 @@ const tones = {
     border200: "border-indigo-200",
     bullet500: "bg-indigo-500",
   },
-  amber: {
-    bg50: "bg-amber-50",
-    text600: "text-amber-600",
-    bg600: "bg-amber-600",
-    hoverBg500: "hover:bg-amber-500",
-    border200: "border-amber-200",
-    bullet500: "bg-amber-500",
-  },
 };
 
 // Static class maps so Tailwind picks them up
 const topGradients = {
   rose: "bg-gradient-to-r from-rose-200 via-fuchsia-200 to-sky-200",
-  emerald: "bg-gradient-to-r from-emerald-200 via-teal-200 to-sky-200",
   indigo: "bg-gradient-to-r from-indigo-200 via-violet-200 to-sky-200",
-  amber: "bg-gradient-to-r from-amber-200 via-orange-200 to-yellow-200",
 };
 
 // RGBA accents for radial overlays
 const toneAlpha = {
   rose: "rgba(244,63,94,0.12)",
-  emerald: "rgba(16,185,129,0.12)",
   indigo: "rgba(79,70,229,0.12)",
-  amber: "rgba(245,158,11,0.12)",
 };
 
 export default function AILearningLanding() {
   const [active, setActive] = useState("students");
 
+  // Display names for UI
+  const display = {
+    students: "Students",
+    teachers: "Teachers",
+  };
+
+  // Media map: put files under /public and keep these paths or change them here
+  const media = {
+    hero: {
+      students: "/students.png", // you already have this
+      teachers: "/hero-teachers.jpg", // add to public/ or change name
+    },
+    solutions: {
+      students: [
+        "/images/solutions-students-1.jpg",
+        "/images/solutions-students-2.jpg",
+        "/images/solutions-students-3.jpg",
+      ],
+      teachers: [
+        "/images/solutions-teachers-1.jpg",
+        "/images/solutions-teachers-2.jpg",
+        "/images/solutions-teachers-3.jpg",
+      ],
+    },
+  };
+
   const variants = {
     students: {
       tone: "rose",
-      heroKicker: "AI-powered learning platform",
+      heroKicker: "AI powered learning platform",
       heroTitle: (
         <>Transform Learning with <span className="text-rose-600">AI Innovation</span></>
       ),
       heroDesc:
-        "From individual students to clubs and cohorts, My Learn delivers personalized study plans, AI tutoring, and progress tracking that adapts to each learner.",
+        "From individual learners to clubs and cohorts, My Learn delivers personalized study plans, AI tutoring, and progress tracking that adapts to each learner.",
       solutions: [
         {
           title: "Individual Learners",
@@ -82,7 +88,7 @@ export default function AILearningLanding() {
           cta: "Build My Plan",
         },
         {
-          title: "Clubs & Cohorts",
+          title: "Clubs and Cohorts",
           desc: "Group projects, peer review, and shared resources to learn together.",
           points: ["Projects toolkit", "Peer review", "Shared notes"],
           cta: "Create a Cohort",
@@ -100,48 +106,6 @@ export default function AILearningLanding() {
         left: ["1 course, 50 learners", "AI tutor and quizzes", "Basic analytics"],
         mid: ["Unlimited courses", "Advanced analytics", "Integrations"],
         right: ["SSO", "Roles and permissions", "Priority support"],
-      },
-    },
-    parents: {
-      tone: "emerald",
-      heroKicker: "For Parents",
-      heroTitle: (
-        <>Support Learning with <span className="text-emerald-600">Clear Insights</span></>
-      ),
-      heroDesc:
-        "Stay engaged with your student's progress. Weekly reports, goals, and safety controls in one place.",
-      solutions: [
-        {
-          title: "Progress Tracking",
-          desc: "Know what was learned and what needs attention.",
-          points: ["Weekly summaries", "Strengths and gaps", "Attendance view"],
-          cta: "View a Sample Report",
-        },
-        {
-          title: "Guided Study Plans",
-          desc: "Age-appropriate plans aligned to curriculum.",
-          points: ["Standards aligned", "Parent tips", "Offline activities"],
-          cta: "Build a Plan",
-        },
-        {
-          title: "Family Portal",
-          desc: "Multi-learner dashboards and notifications.",
-          points: ["Multiple profiles", "Goals and rewards", "Privacy controls"],
-          cta: "Set Up Family",
-        },
-      ],
-      features: [
-        { t: "Weekly Digest", d: "Email and in-app summaries." },
-        { t: "Goals & Rewards", d: "Motivate with milestones." },
-        { t: "Content Filters", d: "Age filtering and controls." },
-        { t: "Shared Calendar", d: "Plan across devices." },
-        { t: "Progress Alerts", d: "Get notified early." },
-        { t: "School Sync", d: "Pull assignments from LMS." },
-      ],
-      pricing: {
-        left: ["Up to 2 learners", "Weekly reports", "Parent tips"],
-        mid: ["Unlimited learners", "Advanced insights", "School sync"],
-        right: ["SSO", "Dedicated success", "Data exports"],
       },
     },
     teachers: {
@@ -167,7 +131,7 @@ export default function AILearningLanding() {
         },
         {
           title: "Class Analytics",
-          desc: "Spot at-risk students and adjust groups.",
+          desc: "Spot at risk students and adjust groups.",
           points: ["Mastery heatmaps", "Grouping", "Parent communication"],
           cta: "Open Dashboard",
         },
@@ -175,7 +139,7 @@ export default function AILearningLanding() {
       features: [
         { t: "Curriculum Aligner", d: "Maps to standards." },
         { t: "Rubrics", d: "Quick scoring with consistency." },
-        { t: "Seating & Groups", d: "Data-informed grouping." },
+        { t: "Seating and Groups", d: "Data informed grouping." },
         { t: "Plagiarism Checks", d: "AI assisted originality." },
         { t: "LMS Integrations", d: "Google Classroom, Canvas, more." },
         { t: "Parent Comms", d: "Batch summaries and notes." },
@@ -184,48 +148,6 @@ export default function AILearningLanding() {
         left: ["1 class, 35 students", "Lesson planner", "Basic analytics"],
         mid: ["Unlimited classes", "Assessment suite", "LMS integrations"],
         right: ["District SSO", "SIS sync", "Admin controls"],
-      },
-    },
-    corporations: {
-      tone: "amber",
-      heroKicker: "For Corporations",
-      heroTitle: (
-        <>Scale Skills with <span className="text-amber-600">AI Training</span></>
-      ),
-      heroDesc:
-        "Upskill teams with role-based paths, compliance training, and dashboards for managers.",
-      solutions: [
-        {
-          title: "Onboarding",
-          desc: "Role based paths that ramp hires faster.",
-          points: ["Skills mapping", "Checkpoints", "Manager sign-off"],
-          cta: "Design Onboarding",
-        },
-        {
-          title: "Compliance",
-          desc: "Automated reminders and attestations.",
-          points: ["SCORM and xAPI", "Cert management", "Audit trails"],
-          cta: "View Templates",
-        },
-        {
-          title: "Upskilling",
-          desc: "Career paths and assessments tied to impact.",
-          points: ["Job frameworks", "Labs and projects", "Manager insights"],
-          cta: "Create a Path",
-        },
-      ],
-      features: [
-        { t: "Skills Graph", d: "Map roles to skills and gaps." },
-        { t: "Content Hub", d: "Import providers and internal docs." },
-        { t: "Dashboards", d: "Team and exec views." },
-        { t: "SSO & SCIM", d: "Enterprise-ready access." },
-        { t: "APIs", d: "Automate assignments and reports." },
-        { t: "Security", d: "Encryption and audit logs." },
-      ],
-      pricing: {
-        left: ["Up to 50 employees", "Standard support", "Reports"],
-        mid: ["Up to 500 employees", "Integrations", "Advanced analytics"],
-        right: ["Unlimited", "SSO and SLA", "Dedicated manager"],
       },
     },
   };
@@ -237,12 +159,12 @@ export default function AILearningLanding() {
 
   return (
     <div className={cx("min-h-screen bg-neutral-50 text-neutral-900 selection:bg-rose-200/60")}> 
-      {/* Top gradient accents - dynamic per audience */}
+      {/* Top gradient accents */}
       <div className="pointer-events-none fixed inset-x-0 -top-32 z-0 blur-3xl">
         <div className={cx("mx-auto h-64 w-11/12 max-w-6xl opacity-60 rounded-3xl", grad)} />
       </div>
 
-      {/* Navbar following original layout but with new audience tabs */}
+      {/* Navbar */}
       <header className="relative z-10">
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-5 md:px-6">
           {/* Logo */}
@@ -261,9 +183,7 @@ export default function AILearningLanding() {
           <div className="hidden items-center gap-6 text-sm md:flex">
             {[
               { id: "students", label: "Students" },
-              { id: "parents", label: "Parents" },
               { id: "teachers", label: "Teachers" },
-              { id: "corporations", label: "Corporations" },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -293,7 +213,7 @@ export default function AILearningLanding() {
         </nav>
       </header>
 
-      {/* Hero - keeps initial screenshot structure */}
+      {/* Hero */}
       <main className="relative z-10">
         <section className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-10 px-4 pb-16 pt-8 md:grid-cols-2 md:gap-12 md:px-6 md:pt-12">
           {/* Left copy */}
@@ -303,7 +223,7 @@ export default function AILearningLanding() {
             <p className="mt-4 max-w-xl text-neutral-600 md:text-lg">{v.heroDesc}</p>
 
             {/* My Learn tagline */}
-            <p className="mt-3 max-w-xl text-sm text-neutral-500">My Learn is an AI powered EdTech platform that serves everyone from individual students to entire university systems and corporate training departments.</p>
+            <p className="mt-3 max-w-xl text-sm text-neutral-500">My Learn is an AI powered EdTech platform that serves everyone from individual learners to enterprises.</p>
 
             {/* CTAs */}
             <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -343,13 +263,16 @@ export default function AILearningLanding() {
 
             {/* Main image card */}
             <div className="relative rounded-3xl border border-neutral-200 bg-white p-2 shadow-lg">
-              <div className="aspect-[4/3] w-full overflow-hidden rounded-2xl bg-gradient-to-br from-neutral-200 via-neutral-100 to-white">
-                {/* Placeholder image composition with tone radial */}
-                <div className="relative h-full w-full">
-                  <div className="absolute right-6 top-6 h-24 w-24 rounded-full bg-neutral-300/70" />
-                  <div className="absolute bottom-0 left-0 right-0 h-2/3" style={{background: `radial-gradient(120% 100% at 20% 0%, ${alpha}, transparent 60%)`}} />
-                  <div className="absolute bottom-6 left-6 h-40 w-64 rounded-xl bg-white/70 backdrop-blur" />
-                </div>
+              <div className="aspect-[4/3] w-full overflow-hidden rounded-2xl bg-neutral-200">
+                {media.hero[active] ? (
+                  <img src={media.hero[active]} alt={`${display[active]} hero`} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="relative h-full w-full bg-gradient-to-br from-neutral-200 via-neutral-100 to-white">
+                    <div className="absolute right-6 top-6 h-24 w-24 rounded-full bg-neutral-300/70" />
+                    <div className="absolute bottom-0 left-0 right-0 h-2/3" style={{background: `radial-gradient(120% 100% at 20% 0%, ${alpha}, transparent 60%)`}} />
+                    <div className="absolute bottom-6 left-6 h-40 w-64 rounded-xl bg-white/70 backdrop-blur" />
+                  </div>
+                )}
               </div>
 
               {/* Floating stat card */}
@@ -364,20 +287,24 @@ export default function AILearningLanding() {
           </div>
         </section>
 
-        {/* Solutions - matches screenshot structure but audience aware */}
+        {/* Solutions */}
         <section id="solutions" className="relative z-10 bg-white/60 backdrop-blur">
           <div className="mx-auto max-w-7xl px-4 py-16 md:px-6">
             <div className="mx-auto max-w-3xl text-center">
               <div className={cx("mb-3 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium border", tone.border200, tone.text600, tone.bg50)}>Solutions</div>
               <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">Solutions for Every Learning Need</h2>
-              <p className="mt-3 text-neutral-600">Tailored content for {active.replace(/^[a-z]/, (m) => m.toUpperCase())}.</p>
+              <p className="mt-3 text-neutral-600">Tailored content for {display[active]}.</p>
             </div>
 
             <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-3">
               {v.solutions.map((card, i) => (
                 <div key={i} className="rounded-2xl border border-neutral-200 bg-white shadow-sm">
                   <div className="aspect-[4/3] w-full overflow-hidden rounded-t-2xl bg-neutral-200">
-                    <div className="h-full w-full" style={{background: `radial-gradient(120% 100% at 0% 0%, ${alpha}, transparent 60%)`}} />
+                    {media.solutions[active] && media.solutions[active][i] ? (
+                      <img src={media.solutions[active][i]} alt={`${display[active]} ${card.title}`} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="h-full w-full" style={{background: `radial-gradient(120% 100% at 0% 0%, ${alpha}, transparent 60%)`}} />
+                    )}
                   </div>
                   <div className="p-6">
                     <h3 className="text-lg font-semibold">{card.title}</h3>
@@ -437,10 +364,10 @@ export default function AILearningLanding() {
         <section className="relative z-10">
           <div className="mx-auto max-w-7xl px-4 py-16 md:px-6">
             <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-3">
-              {[ 
-                { quote: 'Completion rates jumped and instructors love the AI assistant.', author: 'Dean of Online Programs' },
-                { quote: 'We rolled out global onboarding in weeks and cut content creation time in half.', author: 'L&D Director' },
-                { quote: 'The analytics helped us identify at-risk learners early.', author: 'Student Success Lead' }
+              {[
+                { quote: "Completion rates jumped and instructors love the AI assistant.", author: "Dean of Online Programs" },
+                { quote: "We rolled out global onboarding in weeks and cut content creation time in half.", author: "L&D Director" },
+                { quote: "The analytics helped us identify at risk learners early.", author: "Student Success Lead" }
               ].map((t, i) => (
                 <div key={i} className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
                   <svg className={cx("h-6 w-6", tone.text600)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M7 7h4v10H7zM13 7h4v10h-4z"/></svg>
@@ -494,32 +421,6 @@ export default function AILearningLanding() {
                   {variants[active].pricing.right.map((x, i) => (<li key={i}>{x}</li>))}
                 </ul>
                 <a href="#" className="mt-6 inline-flex w-full items-center justify-center rounded-xl border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-50">Talk to Sales</a>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* FAQ */}
-        <section className="relative z-10">
-          <div className="mx-auto max-w-7xl px-4 py-16 md:px-6">
-            <div className="mx-auto max-w-3xl">
-              <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">Frequently Asked Questions</h2>
-              <div className="mt-6 divide-y divide-neutral-200 rounded-2xl border border-neutral-200 bg-white">
-                {[
-                  { q: 'Can I import existing content?', a: 'Yes. Upload files or link sources and the builder converts them.' },
-                  { q: 'Is my data secure?', a: 'We use encryption in transit and at rest with role based access.' },
-                  { q: 'Do you offer education discounts?', a: 'Yes. Discounts for accredited institutions and nonprofits.' }
-                ].map((item, i) => (
-                  <details key={i} className="group">
-                    <summary className="cursor-pointer list-none p-5 font-medium text-neutral-900 group-open:bg-neutral-50">
-                      <div className="flex items-center justify-between">
-                        <span>{item.q}</span>
-                        <span className="ml-4 inline-flex h-6 w-6 items-center justify-center rounded-md border border-neutral-200">+</span>
-                      </div>
-                    </summary>
-                    <div className="px-5 pb-5 text-neutral-600">{item.a}</div>
-                  </details>
-                ))}
               </div>
             </div>
           </div>
