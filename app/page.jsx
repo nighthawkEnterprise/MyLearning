@@ -1,9 +1,10 @@
 'use client'
 import React, { useState } from "react";
+// import { auth0 } from '../lib/auth0';
 
 // Utility to concat classes
 const cx = (...cls) => cls.filter(Boolean).join(" ");
-
+import Link from 'next/link';
 // Theme tokens per audience
 const tones = {
   rose: {
@@ -200,7 +201,7 @@ export default function AILearningLanding() {
 
           {/* Right actions */}
           <div className="hidden items-center gap-3 md:flex">
-            <a href="#" className="text-sm text-neutral-700 hover:text-neutral-900">Login</a>
+            <a href="/auth/login?returnTo=/protected" className="text-sm text-neutral-700 hover:text-neutral-900">Login</a>
             <a href="#" className={cx("inline-flex items-center rounded-xl px-4 py-2 text-sm font-medium text-white shadow-sm transition", tone.bg600, tone.hoverBg500)}>
               Get Started
             </a>
