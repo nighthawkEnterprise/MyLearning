@@ -170,14 +170,12 @@ export default function AILearningLanding() {
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-5 md:px-6">
           {/* Logo */}
           <a href="#" className="flex items-center gap-2">
-            <svg className={cx("h-7 w-7", tone.text600)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 15c4-7 14-7 18 0"/>
-              <path d="M5 12c3-5 11-5 14 0"/>
-              <path d="M7 9c2-3 8-3 10 0"/>
-            </svg>
-            <span className="font-semibold tracking-tight text-xl">
-              <span className={tone.text600}>My</span> Learn
-            </span>
+
+            <img
+              src="/learning-demo-logo.png"
+              alt="My Learn"
+              className="inline-block h-6 w-auto align-middle sm:h-7"
+            />
           </a>
 
           {/* Audience tabs */}
@@ -223,8 +221,8 @@ export default function AILearningLanding() {
             <h1 className="text-4xl font-semibold leading-tight tracking-tight md:text-5xl">{v.heroTitle}</h1>
             <p className="mt-4 max-w-xl text-neutral-600 md:text-lg">{v.heroDesc}</p>
 
-            {/* My Learn tagline */}
-            <p className="mt-3 max-w-xl text-sm text-neutral-500">My Learn is an AI powered EdTech platform that serves everyone from individual learners to enterprises.</p>
+            {/* My Learning tagline */}
+            <p className="mt-3 max-w-xl text-sm text-neutral-500">My Learning is an AI powered EdTech platform that serves everyone from individual learners to enterprises.</p>
 
             {/* CTAs */}
             <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -433,7 +431,7 @@ export default function AILearningLanding() {
             <div className="relative overflow-hidden rounded-3xl border border-neutral-200 bg-white p-8 shadow-sm md:p-12">
               <div className={cx("absolute -right-20 -top-16 h-64 w-64 rounded-full blur-2xl bg-current bg-opacity-10", tone.text600)} />
               <h3 className="text-2xl font-semibold md:text-3xl">Ready to transform learning with AI</h3>
-              <p className="mt-2 max-w-2xl text-neutral-600">Join millions of learners and hundreds of institutions already using My Learn to deliver engaging, effective education.</p>
+              <p className="mt-2 max-w-2xl text-neutral-600">Join millions of learners and hundreds of institutions already using My Learning to deliver engaging, effective education.</p>
               <div className="mt-6 flex flex-wrap items-center gap-3">
                 <a href="#" className={cx("inline-flex items-center rounded-xl px-5 py-3 text-sm font-medium text-white", tone.bg600, tone.hoverBg500)}>Get Started</a>
                 <a href="#" className="inline-flex items-center rounded-xl border border-neutral-200 bg-white px-5 py-3 text-sm font-medium text-neutral-800 hover:bg-neutral-50">Contact Sales</a>
@@ -446,7 +444,7 @@ export default function AILearningLanding() {
       {/* Footer mini */}
       <footer className="relative z-10 border-t border-neutral-200/60 bg-white/60 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-8 text-sm text-neutral-500 md:flex-row md:px-6">
-          <p>© {new Date().getFullYear()} My Learn. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} My Learning. All rights reserved.</p>
           <ul className="flex items-center gap-6">
             <li><a href="#" className="hover:text-neutral-700">Privacy</a></li>
             <li><a href="#" className="hover:text-neutral-700">Terms</a></li>
