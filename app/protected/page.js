@@ -1,518 +1,341 @@
 'use client'
-
-import React, { useMemo, useState } from 'react'
+import React, { useState } from 'react'
 import {
+  LayoutDashboard,
+  BadgeCheck,
+  FileBadge,
+  ShieldCheck,
+  AlertTriangle,
   Bell,
-  BookOpen,
-  Calendar,
+  CalendarClock,
+  Upload,
+  PlayCircle,
   CheckCircle2,
   Clock,
-  Flame,
-  GraduationCap,
-  ListChecks,
-  Play,
-  Sparkles,
-  TrendingUp,
-  Brain,
-  BarChart3,
-  User,
-  Shield,
-  Lock,
-  BellRing,
-  Link2,
-  Trash2,
+  Users,
+  Settings,
+  Search,
+  LineChart as LineChartIcon,
+  BarChart3
 } from 'lucide-react'
-import { AreaChart, Area, XAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts'
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  LineChart,
+  Line,
+  AreaChart,
+  Area
+} from 'recharts'
 
-// Simple cx utility
+// Utility to concat classes
 const cx = (...cls) => cls.filter(Boolean).join(' ')
 
-// Theme tokens for the Students persona
-const tone = {
-  bg50: 'bg-rose-50',
-  text600: 'text-rose-600',
-  bg600: 'bg-rose-600',
-  hoverBg500: 'hover:bg-rose-500',
-  border200: 'border-rose-200',
+// Streamward brand tokens
+const brand = {
+  text600: 'text-orange-600',
+  bg600: 'bg-orange-600',
+  hoverBg500: 'hover:bg-orange-500',
+  bg50: 'bg-orange-50',
+  border200: 'border-orange-200',
 }
 
-// Mock dashboard data - replace with your real sources
-const progressSeries = [
-  { d: 'Mon', sessions: 2, minutes: 40 },
-  { d: 'Tue', sessions: 3, minutes: 55 },
-  { d: 'Wed', sessions: 1, minutes: 25 },
-  { d: 'Thu', sessions: 2, minutes: 45 },
-  { d: 'Fri', sessions: 2, minutes: 35 },
-  { d: 'Sat', sessions: 4, minutes: 85 },
-  { d: 'Sun', sessions: 3, minutes: 60 },
-]
+export default function StreamwardDashboard() {
+  const [range, setRange] = useState('30d')
+  const [location, setLocation] = useState('All')
+  const [dept, setDept] = useState('All')
+  const year = new Date().getFullYear()
 
-const masterySeries = [
-  { topic: 'Algebra', pct: 82 },
-  { topic: 'Geometry', pct: 64 },
-  { topic: 'Calculus', pct: 48 },
-  { topic: 'Statistics', pct: 57 },
-  { topic: 'Logic', pct: 72 },
-]
+  // Sample chart data
+  const trend = [
+    { name: 'Jan', compliant: 72, overdue: 18 },
+    { name: 'Feb', compliant: 75, overdue: 17 },
+    { name: 'Mar', compliant: 78, overdue: 14 },
+    { name: 'Apr', compliant: 80, overdue: 13 },
+    { name: 'May', compliant: 83, overdue: 12 },
+    { name: 'Jun', compliant: 86, overdue: 10 },
+  ]
 
-const dueSoon = [
-  { id: 't1', title: 'Quiz - Linear Equations', due: 'Today 5:00 PM', course: 'Math 101' },
-  { id: 't2', title: 'Essay outline - Cognitive Biases', due: 'Tomorrow 10:00 AM', course: 'Psychology' },
-  { id: 't3', title: 'Flashcards - Key Theorems', due: 'Fri', course: 'Math 101' },
-]
+  const team = [
+    { team: 'Field Ops', people: 124, compliant: 88, expiring: 9 },
+    { team: 'Engineering', people: 86, compliant: 92, expiring: 4 },
+    { team: 'Facilities', people: 42, compliant: 81, expiring: 7 },
+    { team: 'Customer Success', people: 63, compliant: 95, expiring: 2 },
+  ]
 
-const todayPlan = [
-  'Watch 1 lesson - Intro to Limits',
-  'Do 15 practice questions - Algebra',
-  'Review flashcards - 2 decks',
-]
+  const myCerts = [
+    { name: 'Plumbing License - CA', status: 'Active', expires: '2026-03-10' },
+    { name: 'OSHA 30', status: 'Active', expires: '2027-09-01' },
+    { name: 'Backflow Prevention', status: 'Expiring soon', expires: '2025-11-15' },
+  ]
 
-export default function StudentsDashboardHome() {
-  const [checked, setChecked] = useState({})
-  const [tab, setTab] = useState('overview')
+  const assigned = [
+    { title: 'PMP Exam Prep - Module 3', progress: 45, due: 'Jun 28' },
+    { title: 'Code Update: NEC 2023', progress: 10, due: 'Jul 12' },
+    { title: 'Safety Refresher', progress: 90, due: 'Jun 21' },
+  ]
 
-  // Settings state
-  const [profileName, setProfileName] = useState('Alex Student')
-  const [profileEmail, setProfileEmail] = useState('alex@example.com')
-  const [password, setPassword] = useState('')
-  const [mfaEnabled, setMfaEnabled] = useState(true)
-  const [notifyEmail, setNotifyEmail] = useState(true)
-  const [notifyPush, setNotifyPush] = useState(false)
-  const [weeklySummary, setWeeklySummary] = useState(true)
-  const [gdConnected, setGdConnected] = useState(false)
-  const [saveBanner, setSaveBanner] = useState(false)
+  const expiringSoon = [
+    { name: 'Confined Space Training', person: 'Jordan Lee', due: '7 days' },
+    { name: 'First Aid / CPR', person: 'Sam Patel', due: '10 days' },
+    { name: 'Backflow Tester', person: 'Riley Kim', due: '14 days' },
+  ]
 
-  const handleSave = (e) => {
-    e?.preventDefault?.()
-    setSaveBanner(true)
-    setTimeout(() => setSaveBanner(false), 2000)
-  }
-
-  const pctComplete = 62
-  const streakDays = 9
-
-  const nextItem = useMemo(() => dueSoon[0], [])
+  const kpis = [
+    { label: 'Overall compliance', value: '88%', icon: ShieldCheck },
+    { label: 'Expiring this month', value: '23', icon: CalendarClock },
+    { label: 'Overdue items', value: '11', icon: AlertTriangle },
+    { label: 'New certificates', value: '57', icon: BadgeCheck },
+  ]
 
   return (
-    <div className={cx('min-h-screen bg-neutral-50 text-neutral-900', 'selection:bg-rose-200/60')}>
-      {/* Top gradient accent */}
-      <div className="pointer-events-none fixed inset-x-0 -top-32 z-0 blur-3xl">
-        <div className={cx('mx-auto h-64 w-11/12 max-w-6xl opacity-60 rounded-3xl', 'bg-gradient-to-r from-rose-200 via-fuchsia-200 to-sky-200')} />
-      </div>
-
-      {/* Page container */}
-      <div className="relative z-10 mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
-        {/* Header */}
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 overflow-hidden rounded-full bg-neutral-200">
-              <img src="/avatar-student.png" alt="Your avatar" className="h-full w-full object-cover" />
-            </div>
-            <div>
-              <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Welcome back</h1>
-              <p className="text-sm text-neutral-500">Here is your snapshot for today</p>
-            </div>
+    <div className="min-h-screen bg-neutral-50 text-neutral-900">
+      {/* Shell */}
+      <div className="grid min-h-screen grid-cols-1 md:grid-cols-[260px_1fr]">
+        {/* Sidebar */}
+        <aside className="hidden border-r border-neutral-200 bg-white md:block">
+          <div className="flex items-center gap-2 px-4 py-4">
+            <img src="/streamward.png" alt="Streamward" className="h-7 w-auto" />
           </div>
-          <div className="flex items-center gap-2">
-            <button className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2 text-sm hover:bg-neutral-50"><Bell className="h-4 w-4" />Alerts</button>
-            <button className={cx('inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm text-white shadow-sm transition', tone.bg600, tone.hoverBg500)}>
-              <Sparkles className="h-4 w-4" />Start Focus Session
-            </button>
-          </div>
-        </div>
+          <nav className="px-2 py-2 text-sm">
+            <a className={cx('group flex items-center gap-3 rounded-lg px-3 py-2 font-medium text-neutral-800 hover:bg-neutral-50', 'bg-neutral-50')} href="#">
+              <LayoutDashboard className={cx('h-4 w-4', brand.text600)} /> Dashboard
+            </a>
+            <a className="group mt-1 flex items-center gap-3 rounded-lg px-3 py-2 text-neutral-700 hover:bg-neutral-50" href="#">
+              <FileBadge className="h-4 w-4" /> Certifications
+            </a>
+            <a className="group mt-1 flex items-center gap-3 rounded-lg px-3 py-2 text-neutral-700 hover:bg-neutral-50" href="#">
+              <PlayCircle className="h-4 w-4" /> Training
+            </a>
+            <a className="group mt-1 flex items-center gap-3 rounded-lg px-3 py-2 text-neutral-700 hover:bg-neutral-50" href="#">
+              <Users className="h-4 w-4" /> Teams
+            </a>
+            <a className="group mt-1 flex items-center gap-3 rounded-lg px-3 py-2 text-neutral-700 hover:bg-neutral-50" href="#">
+              <LineChartIcon className="h-4 w-4" /> Reports
+            </a>
+            <a className="group mt-1 flex items-center gap-3 rounded-lg px-3 py-2 text-neutral-700 hover:bg-neutral-50" href="#">
+              <Settings className="h-4 w-4" /> Settings
+            </a>
+          </nav>
+          <div className="mt-auto px-4 py-4 text-xs text-neutral-500">© {year} Streamward</div>
+        </aside>
 
-        {/* Tabs */}
-        <div>
-          <div className="grid w-full grid-cols-4 sm:max-w-lg">
-            {[
-              { id: 'overview', label: 'Overview' },
-              { id: 'assignments', label: 'Assignments' },
-              { id: 'practice', label: 'Practice' },
-              { id: 'settings', label: 'Settings' },
-            ].map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className={cx(
-                  'border px-3 py-2 text-sm first:rounded-l-xl last:rounded-r-xl',
-                  tab === t.id ? cx('bg-white font-semibold', tone.text600, tone.border200) : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-50',
-                  'border-neutral-200'
-                )}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Overview Tab */}
-          {tab === 'overview' && (
-            <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
-              {/* Primary column */}
-              <div className="space-y-6 lg:col-span-2">
-                {/* Continue learning */}
-                <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
-                  <div className="border-b border-neutral-100 p-5">
-                    <div className="flex items-center gap-2 text-base font-semibold"><BookOpen className={cx('h-4 w-4', tone.text600)} /> Continue course</div>
-                    <p className="mt-1 text-sm text-neutral-500">Math 101 - Foundations of Calculus</p>
-                  </div>
-                  <div className="p-5">
-                    <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
-                      <div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-neutral-600">Overall progress</span>
-                          <span className="font-medium">{pctComplete}%</span>
-                        </div>
-                        <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-neutral-200">
-                          <div className="h-full rounded-full bg-rose-600" style={{ width: pctComplete + '%' }} />
-                        </div>
-                        <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
-                          <span className={cx('inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium', tone.bg50, tone.text600, tone.border200, 'border')}>Module 3 - Limits</span>
-                          <span className="text-neutral-500">Next up - One sided limits</span>
-                        </div>
-                      </div>
-                      <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
-                        <button className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2 text-sm hover:bg-neutral-50"><Play className="h-4 w-4" />Resume</button>
-                        <button className={cx('inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm text-white', tone.bg600, tone.hoverBg500)}>
-                          <Sparkles className="h-4 w-4" />AI Tutor
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Charts */}
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  <div className="rounded-2xl border border-neutral-200 bg-white">
-                    <div className="border-b border-neutral-100 p-5">
-                      <div className="text-base font-semibold">Study minutes - last 7 days</div>
-                      <p className="mt-1 text-sm text-neutral-500">Your streak is looking good</p>
-                    </div>
-                    <div className="p-5">
-                      <div className="h-48">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={progressSeries} margin={{ left: 8, right: 8 }}>
-                            <defs>
-                              <linearGradient id="minGrad" x1="0" x2="0" y1="0" y2="1">
-                                <stop offset="0%" stopColor="#e11d48" stopOpacity={0.35} />
-                                <stop offset="100%" stopColor="#e11d48" stopOpacity={0.05} />
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                            <XAxis dataKey="d" tickLine={false} axisLine={false} />
-                            <RechartsTooltip cursor={{ opacity: 0.15 }} />
-                            <Area dataKey="minutes" type="monotone" stroke="#e11d48" fill="url(#minGrad)" strokeWidth={2} />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-neutral-200 bg-white">
-                    <div className="border-b border-neutral-100 p-5">
-                      <div className="text-base font-semibold">Mastery by topic</div>
-                      <p className="mt-1 text-sm text-neutral-500">Focus on lower mastery first</p>
-                    </div>
-                    <div className="p-5">
-                      <div className="h-48">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={masterySeries}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                            <XAxis dataKey="topic" tickLine={false} axisLine={false} />
-                            <RechartsTooltip cursor={{ opacity: 0.15 }} />
-                            <Bar dataKey="pct" radius={[6, 6, 0, 0]}>
-                              {masterySeries.map((_, i) => (
-                                <Cell key={`c-${i}`} />
-                              ))}
-                            </Bar>
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Side column */}
-              <div className="space-y-6">
-                {/* Streak and next due */}
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
-                  <div className="rounded-2xl border border-neutral-200 bg-white">
-                    <div className="border-b border-neutral-100 p-5">
-                      <div className="flex items-center gap-2 text-base font-semibold"><Flame className={cx('h-4 w-4', tone.text600)} /> Streak</div>
-                      <p className="mt-1 text-sm text-neutral-500">Keep the chain going</p>
-                    </div>
-                    <div className="p-5">
-                      <div className="flex items-end justify-between">
-                        <div>
-                          <div className="text-3xl font-semibold">{streakDays} days</div>
-                          <p className="mt-1 text-sm text-neutral-500">Best - 12 days</p>
-                        </div>
-                        <span className={cx('inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium text-white', tone.bg600)}>+15 XP</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-neutral-200 bg-white">
-                    <div className="border-b border-neutral-100 p-5">
-                      <div className="flex items-center gap-2 text-base font-semibold"><Clock className={cx('h-4 w-4', tone.text600)} /> Next due</div>
-                      <p className="mt-1 text-sm text-neutral-500">Do this first</p>
-                    </div>
-                    <div className="p-5">
-                      <div className="space-y-1">
-                        <div className="font-medium">{nextItem.title}</div>
-                        <div className="text-sm text-neutral-500">{nextItem.course} - {nextItem.due}</div>
-                        <div className="mt-3 flex gap-2">
-                          <button className={cx('rounded-xl px-3 py-1.5 text-sm text-white', tone.bg600, tone.hoverBg500)}>Open</button>
-                          <button className="rounded-xl border border-neutral-200 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50">Snooze</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Today plan */}
-                <div className="rounded-2xl border border-neutral-200 bg-white">
-                  <div className="border-b border-neutral-100 p-5">
-                    <div className="flex items-center gap-2 text-base font-semibold"><ListChecks className={cx('h-4 w-4', tone.text600)} /> Today plan</div>
-                    <p className="mt-1 text-sm text-neutral-500">Auto created by AI</p>
-                  </div>
-                  <div className="p-5">
-                    <ul className="space-y-3">
-                      {todayPlan.map((task, i) => (
-                        <li key={i} className="flex items-start justify-between gap-3">
-                          <label className="flex cursor-pointer items-start gap-3 text-sm">
-                            <input
-                              type="checkbox"
-                              className="mt-1 h-4 w-4 rounded border-neutral-300 text-rose-600 focus:ring-rose-500"
-                              onChange={(e) => setChecked((s) => ({ ...s, [String(i)]: e.target.checked }))}
-                              checked={Boolean(checked[String(i)])}
-                            />
-                            <span className={cx(Boolean(checked[String(i)]) && 'line-through text-neutral-400')}>{task}</span>
-                          </label>
-                          {Boolean(checked[String(i)]) ? (
-                            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                          ) : null}
-                        </li>
-                      ))}
-                    </ul>
-                    <div className="mt-4 flex gap-2">
-                      <button className="rounded-xl border border-neutral-200 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50">Shuffle</button>
-                      <button className={cx('rounded-xl px-3 py-1.5 text-sm text-white', tone.bg600, tone.hoverBg500)}>Regenerate</button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Quick practice */}
-                <div className="rounded-2xl border border-neutral-200 bg-white">
-                  <div className="border-b border-neutral-100 p-5">
-                    <div className="flex items-center gap-2 text-base font-semibold"><Brain className={cx('h-4 w-4', tone.text600)} /> AI tutor</div>
-                    <p className="mt-1 text-sm text-neutral-500">Ask anything or practice with quick prompts</p>
-                  </div>
-                  <div className="p-5">
-                    <div className="flex items-center gap-2">
-                      <input className="h-10 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm outline-none placeholder:text-neutral-400 focus:ring-2 focus:ring-rose-200" placeholder="Ask the tutor..." />
-                      <button className={cx('h-10 rounded-xl px-4 text-sm text-white', tone.bg600, tone.hoverBg500)}>Send</button>
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                      {['Explain limits', 'Generate 5 practice problems', 'Review my steps', 'Create flashcards'].map((t) => (
-                        <button key={t} className={cx('rounded-xl border px-2.5 py-1 font-medium', tone.bg50, tone.text600, tone.border200, 'border')}>
-                          {t}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+        {/* Main */}
+        <div className="flex min-w-0 flex-col">
+          {/* Top bar */}
+          <header className="sticky top-0 z-10 border-b border-neutral-200 bg-white">
+            <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3">
+              <form className="hidden flex-1 items-center gap-2 rounded-xl border border-neutral-200 bg-white p-2 md:flex">
+                <Search className={cx('h-4 w-4 shrink-0', brand.text600)} />
+                <input placeholder="Search people, credentials, or courses" className="w-full bg-transparent text-sm outline-none placeholder:text-neutral-400" />
+              </form>
+              <div className="flex items-center gap-2">
+                <select value={range} onChange={(e) => setRange(e.target.value)} className="rounded-lg border border-neutral-200 bg-white px-2 py-1 text-sm">
+                  <option value="7d">Last 7 days</option>
+                  <option value="30d">Last 30 days</option>
+                  <option value="90d">Last 90 days</option>
+                </select>
+                <button className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-200 text-neutral-700 hover:bg-neutral-50">
+                  <Bell className="h-4 w-4" />
+                  <span className="absolute right-1 top-1 inline-flex h-2 w-2 rounded-full bg-orange-500"></span>
+                </button>
+                <button className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-1.5 text-sm">
+                  <img src="https://i.pravatar.cc/40?img=8" alt="avatar" className="h-6 w-6 rounded-full" />
+                  <span className="hidden sm:inline">Account</span>
+                </button>
               </div>
             </div>
-          )}
+          </header>
 
-          {/* Assignments Tab */}
-          {tab === 'assignments' && (
-            <div className="mt-6 rounded-2xl border border-neutral-200 bg-white">
-              <div className="border-b border-neutral-100 p-5">
-                <div className="flex items-center gap-2 text-base font-semibold"><Calendar className={cx('h-4 w-4', tone.text600)} /> Upcoming work</div>
-                <p className="mt-1 text-sm text-neutral-500">Deadlines for the next 7 days</p>
+          {/* Content */}
+          <main className="mx-auto w-full max-w-7xl flex-1 space-y-8 px-4 py-6">
+            {/* Filters */}
+            <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+                <div className="text-xs text-neutral-500">Location</div>
+                <select value={location} onChange={(e) => setLocation(e.target.value)} className="mt-1 w-full rounded-lg border border-neutral-200 bg-white px-2 py-1.5 text-sm">
+                  <option>All</option>
+                  <option>California</option>
+                  <option>Texas</option>
+                  <option>New York</option>
+                  <option>Florida</option>
+                </select>
               </div>
-              <div className="p-5">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  {dueSoon.map((d) => (
-                    <div key={d.id} className="rounded-xl border border-neutral-200 p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <div className="font-medium">{d.title}</div>
-                          <div className="text-sm text-neutral-500">{d.course} - {d.due}</div>
-                        </div>
-                        <button className="rounded-xl border border-neutral-200 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50">Open</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+                <div className="text-xs text-neutral-500">Department</div>
+                <select value={dept} onChange={(e) => setDept(e.target.value)} className="mt-1 w-full rounded-lg border border-neutral-200 bg-white px-2 py-1.5 text-sm">
+                  <option>All</option>
+                  <option>Field Ops</option>
+                  <option>Engineering</option>
+                  <option>Facilities</option>
+                  <option>Customer Success</option>
+                </select>
               </div>
-            </div>
-          )}
-
-          {/* Practice Tab */}
-          {tab === 'practice' && (
-            <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-3">
-              {[
-                { t: 'Adaptive quiz', d: 'Auto adjusts based on accuracy', icon: <BarChart3 className="h-4 w-4" /> },
-                { t: 'Flashcards', d: 'Spaced repetition built in', icon: <GraduationCap className="h-4 w-4" /> },
-                { t: 'Step by step', d: 'Show your work and get hints', icon: <TrendingUp className="h-4 w-4" /> },
-              ].map((x, i) => (
-                <div key={i} className="flex flex-col rounded-2xl border border-neutral-200 bg-white">
-                  <div className="p-5 pb-2">
-                    <div className="flex items-center gap-2 text-base font-semibold">{x.icon} {x.t}</div>
-                    <p className="mt-1 text-sm text-neutral-500">{x.d}</p>
+              {kpis.map((k, i) => (
+                <div key={i} className="rounded-2xl border border-neutral-200 bg-white p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs text-neutral-500">{k.label}</div>
+                    <k.icon className={cx('h-4 w-4', brand.text600)} />
                   </div>
-                  <div className="mt-auto p-5 pt-2">
-                    <button className={cx('w-full rounded-xl px-4 py-2 text-sm text-white', tone.bg600, tone.hoverBg500)}>Start</button>
-                  </div>
+                  <div className="mt-2 text-2xl font-semibold">{k.value}</div>
                 </div>
               ))}
-            </div>
-          )}
+            </section>
 
-          {/* Settings Tab */}
-          {tab === 'settings' && (
-            <div className="mt-6 space-y-6">
-              {saveBanner && (
-                <div className={cx('rounded-xl border p-3 text-sm', tone.bg50, tone.border200, 'border', tone.text600)}>
-                  Settings saved
+            {/* Charts */}
+            <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+              <div className="rounded-2xl border border-neutral-200 bg-white p-5 lg:col-span-2">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-base font-semibold">Compliance trend</h3>
+                  <div className="inline-flex items-center gap-2 text-xs text-neutral-500"><LineChartIcon className={cx('h-4 w-4', brand.text600)} /> last {range}</div>
                 </div>
-              )}
-
-              {/* Profile */}
-              <div className="rounded-2xl border border-neutral-200 bg-white">
-                <div className="border-b border-neutral-100 p-5">
-                  <div className="flex items-center gap-2 text-base font-semibold"><User className={cx('h-4 w-4', tone.text600)} /> Profile</div>
-                  <p className="mt-1 text-sm text-neutral-500">Update your basic information</p>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={trend} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="c1" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#EA580C" stopOpacity={0.35}/>
+                          <stop offset="95%" stopColor="#EA580C" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Area type="monotone" dataKey="compliant" stroke="#EA580C" fillOpacity={1} fill="url(#c1)" />
+                      <Line type="monotone" dataKey="overdue" stroke="#94a3b8" strokeWidth={2} />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 </div>
-                <form className="p-5" onSubmit={handleSave}>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div>
-                      <label className="text-sm text-neutral-600">Full name</label>
-                      <input value={profileName} onChange={(e) => setProfileName(e.target.value)} className="mt-1 h-10 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-rose-200" />
-                    </div>
-                    <div>
-                      <label className="text-sm text-neutral-600">Email</label>
-                      <input type="email" value={profileEmail} onChange={(e) => setProfileEmail(e.target.value)} className="mt-1 h-10 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-rose-200" />
-                    </div>
-                  </div>
-                  <div className="mt-4 flex gap-2">
-                    <button type="submit" className={cx('rounded-xl px-4 py-2 text-sm text-white', tone.bg600, tone.hoverBg500)}>Save changes</button>
-                    <button type="button" className="rounded-xl border border-neutral-200 bg-white px-4 py-2 text-sm hover:bg-neutral-50" onClick={() => { setProfileName('Alex Student'); setProfileEmail('alex@example.com') }}>Reset</button>
-                  </div>
-                </form>
               </div>
-
-              {/* Security */}
-              <div className="rounded-2xl border border-neutral-200 bg-white">
-                <div className="border-b border-neutral-100 p-5">
-                  <div className="flex items-center gap-2 text-base font-semibold"><Shield className={cx('h-4 w-4', tone.text600)} /> Security</div>
-                  <p className="mt-1 text-sm text-neutral-500">Password and multi factor</p>
+              <div className="rounded-2xl border border-neutral-200 bg-white p-5">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-base font-semibold">Departments</h3>
+                  <BarChart3 className={cx('h-4 w-4', brand.text600)} />
                 </div>
-                <div className="p-5">
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div>
-                      <label className="text-sm text-neutral-600">New password</label>
-                      <div className="mt-1 flex gap-2">
-                        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="h-10 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-rose-200" placeholder="Enter a strong password" />
-                        <button className="rounded-xl border border-neutral-200 bg-white px-3 text-sm hover:bg-neutral-50" onClick={() => setPassword('')}>Clear</button>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={team} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                      <XAxis dataKey="team" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="compliant" fill="#EA580C" radius={[6,6,0,0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </section>
+
+            {/* Two column stack */}
+            <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+              {/* My certifications */}
+              <div className="rounded-2xl border border-neutral-200 bg-white p-5 lg:col-span-2">
+                <h3 className="text-base font-semibold">My certifications</h3>
+                <ul className="mt-4 divide-y divide-neutral-100">
+                  {myCerts.map((c, i) => (
+                    <li key={i} className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <div className="font-medium">{c.name}</div>
+                        <div className="text-xs text-neutral-500">Expires {c.expires}</div>
                       </div>
-                    </div>
-                    <div>
-                      <label className="text-sm text-neutral-600">Multi factor authentication</label>
-                      <div className="mt-1 flex items-center justify-between rounded-xl border border-neutral-200 bg-white p-3">
-                        <div className="flex items-center gap-2 text-sm"><Lock className="h-4 w-4" /> Authenticator app</div>
-                        <button
-                          className={cx('h-6 w-11 rounded-full transition', mfaEnabled ? 'bg-rose-600' : 'bg-neutral-300')}
-                          onClick={() => setMfaEnabled((v) => !v)}
-                        >
-                          <span className={cx('block h-6 w-6 rounded-full bg-white transition', mfaEnabled ? 'translate-x-5' : 'translate-x-0')} />
+                      <div className="flex items-center gap-3">
+                        <span className={cx('inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs', c.status === 'Active' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700')}>
+                          <CheckCircle2 className="h-3.5 w-3.5" /> {c.status}
+                        </span>
+                        <button className={cx('rounded-xl border border-neutral-200 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50')}>View</button>
+                        <button className={cx('inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm text-white', brand.bg600, brand.hoverBg500)}>
+                          <Upload className="h-4 w-4" /> Upload proof
                         </button>
                       </div>
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <button onClick={handleSave} className={cx('rounded-xl px-4 py-2 text-sm text-white', tone.bg600, tone.hoverBg500)}>Update security</button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Notifications */}
-              <div className="rounded-2xl border border-neutral-200 bg-white">
-                <div className="border-b border-neutral-100 p-5">
-                  <div className="flex items-center gap-2 text-base font-semibold"><BellRing className={cx('h-4 w-4', tone.text600)} /> Notifications</div>
-                  <p className="mt-1 text-sm text-neutral-500">Choose how you want to be notified</p>
-                </div>
-                <div className="p-5 space-y-3">
-                  {[
-                    { id: 'email', label: 'Email alerts for deadlines', state: notifyEmail, set: setNotifyEmail },
-                    { id: 'push', label: 'Push reminders on mobile', state: notifyPush, set: setNotifyPush },
-                    { id: 'weekly', label: 'Weekly progress summary', state: weeklySummary, set: setWeeklySummary },
-                  ].map((n) => (
-                    <div key={n.id} className="flex items-center justify-between rounded-xl border border-neutral-200 bg-white p-3">
-                      <div className="flex items-center gap-2 text-sm"><BellRing className="h-4 w-4" /> {n.label}</div>
-                      <button
-                        className={cx('h-6 w-11 rounded-full transition', n.state ? 'bg-rose-600' : 'bg-neutral-300')}
-                        onClick={() => n.set((v) => !v)}
-                      >
-                        <span className={cx('block h-6 w-6 rounded-full bg-white transition', n.state ? 'translate-x-5' : 'translate-x-0')} />
-                      </button>
-                    </div>
+                    </li>
                   ))}
-                  <div>
-                    <button onClick={handleSave} className={cx('mt-2 rounded-xl px-4 py-2 text-sm text-white', tone.bg600, tone.hoverBg500)}>Save preferences</button>
-                  </div>
-                </div>
+                </ul>
               </div>
 
-              {/* Connected apps */}
-              <div className="rounded-2xl border border-neutral-200 bg-white">
-                <div className="border-b border-neutral-100 p-5">
-                  <div className="flex items-center gap-2 text-base font-semibold"><Link2 className={cx('h-4 w-4', tone.text600)} /> Connected apps</div>
-                  <p className="mt-1 text-sm text-neutral-500">Manage integrations</p>
-                </div>
-                <div className="p-5 space-y-3">
-                  <div className="flex items-center justify-between rounded-xl border border-neutral-200 bg-white p-3">
-                    <div className="text-sm">
-                      <div className="font-medium">Google Drive</div>
-                      <div className="text-neutral-500">Import resources and export notes</div>
-                    </div>
-                    {gdConnected ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-emerald-600">Connected</span>
-                        <button className="rounded-xl border border-neutral-200 bg-white px-3 py-1.5 text-sm hover:bg-neutral-50" onClick={() => setGdConnected(false)}>Disconnect</button>
+              {/* Assigned training */}
+              <div className="rounded-2xl border border-neutral-200 bg-white p-5">
+                <h3 className="text-base font-semibold">Assigned training</h3>
+                <ul className="mt-4 space-y-4">
+                  {assigned.map((a, i) => (
+                    <li key={i} className="rounded-xl border border-neutral-200 p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <div className="font-medium">{a.title}</div>
+                          <div className="text-xs text-neutral-500">Due {a.due}</div>
+                        </div>
+                        <button className={cx('inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm text-white', brand.bg600, brand.hoverBg500)}>
+                          <PlayCircle className="h-4 w-4" /> Continue
+                        </button>
                       </div>
-                    ) : (
-                      <button className={cx('rounded-xl px-3 py-1.5 text-sm text-white', tone.bg600, tone.hoverBg500)} onClick={() => setGdConnected(true)}>Connect</button>
-                    )}
-                  </div>
+                      <div className="mt-2 h-2 w-full rounded-full bg-neutral-200">
+                        <div className="h-2 rounded-full bg-orange-500" style={{ width: `${a.progress}%` }} />
+                      </div>
+                      <div className="mt-1 text-right text-xs text-neutral-500">{a.progress}%</div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </section>
+
+            {/* Expiring soon and team table */}
+            <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+              <div className="rounded-2xl border border-neutral-200 bg-white p-5">
+                <h3 className="text-base font-semibold">Expiring soon</h3>
+                <ul className="mt-4 space-y-3 text-sm">
+                  {expiringSoon.map((e, i) => (
+                    <li key={i} className="flex items-center justify-between rounded-lg border border-neutral-200 p-3">
+                      <div>
+                        <div className="font-medium">{e.name}</div>
+                        <div className="text-xs text-neutral-500">{e.person}</div>
+                      </div>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs text-amber-700"><Clock className="h-3.5 w-3.5" /> {e.due}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="rounded-2xl border border-neutral-200 bg-white p-5 lg:col-span-2">
+                <h3 className="text-base font-semibold">Team overview</h3>
+                <div className="mt-4 overflow-x-auto">
+                  <table className="min-w-full text-left text-sm">
+                    <thead className="text-xs text-neutral-500">
+                      <tr>
+                        <th className="px-3 py-2">Team</th>
+                        <th className="px-3 py-2">People</th>
+                        <th className="px-3 py-2">Compliant</th>
+                        <th className="px-3 py-2">Expiring</th>
+                        <th className="px-3 py-2">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-100">
+                      {team.map((t, i) => (
+                        <tr key={i}>
+                          <td className="px-3 py-3 font-medium">{t.team}</td>
+                          <td className="px-3 py-3">{t.people}</td>
+                          <td className="px-3 py-3">
+                            <div className="flex items-center gap-2">
+                              <div className="h-2 w-28 rounded-full bg-neutral-200">
+                                <div className="h-2 rounded-full bg-orange-500" style={{ width: `${t.compliant}%` }} />
+                              </div>
+                              <span className="text-xs text-neutral-600">{t.compliant}%</span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-3">{t.expiring}</td>
+                          <td className="px-3 py-3">
+                            <button className={cx('rounded-lg border border-neutral-200 px-3 py-1.5 text-sm hover:bg-neutral-50')}>View team</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
-
-              {/* Danger zone */}
-              <div className="rounded-2xl border border-red-200 bg-white">
-                <div className="border-b border-red-100 p-5">
-                  <div className="flex items-center gap-2 text-base font-semibold text-red-600"><Trash2 className="h-4 w-4" /> Danger zone</div>
-                  <p className="mt-1 text-sm text-red-600/80">Export data or delete your account</p>
-                </div>
-                <div className="p-5 flex flex-wrap items-center gap-3">
-                  <button className="rounded-xl border border-neutral-200 bg-white px-4 py-2 text-sm hover:bg-neutral-50">Export data</button>
-                  <button className="rounded-xl bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-500">Delete account</button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Footer mini */}
-        <div className="mt-10 flex items-center justify-between border-t border-neutral-200/70 pt-6 text-sm text-neutral-500">
-          <p>Need help - open the tutor or visit Help Center</p>
-          <div className="flex items-center gap-3">
-            <button className="text-neutral-500 hover:text-neutral-700">Privacy</button>
-            <button className="text-neutral-500 hover:text-neutral-700">Terms</button>
-          </div>
+            </section>
+          </main>
         </div>
       </div>
     </div>
