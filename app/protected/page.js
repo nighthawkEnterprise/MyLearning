@@ -16,7 +16,8 @@ import {
   Settings,
   Search,
   LineChart as LineChartIcon,
-  BarChart3
+  BarChart3,
+  LogOut
 } from 'lucide-react'
 import {
   ResponsiveContainer,
@@ -48,6 +49,7 @@ export default function StreamwardDashboard() {
   const [range, setRange] = useState('30d')
   const [location, setLocation] = useState('All')
   const [dept, setDept] = useState('All')
+  const [acctOpen, setAcctOpen] = useState(false)
   const year = new Date().getFullYear()
 
   // Sample chart data
@@ -143,10 +145,20 @@ export default function StreamwardDashboard() {
                   <Bell className="h-4 w-4" />
                   <span className="absolute right-1 top-1 inline-flex h-2 w-2 rounded-full bg-orange-500"></span>
                 </button>
-                <button className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-1.5 text-sm">
+                <div className="relative">
+                <button onClick={() => setAcctOpen(o => !o)} className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-1.5 text-sm">
                   <img src="https://i.pravatar.cc/40?img=8" alt="avatar" className="h-6 w-6 rounded-full" />
                   <span className="hidden sm:inline">Account</span>
                 </button>
+                {acctOpen && (
+                  <div className="absolute right-0 z-20 mt-2 w-48 rounded-xl border border-neutral-200 bg-white p-1 text-sm shadow-lg">
+                    <a href="/account" className="block rounded-lg px-3 py-2 hover:bg-neutral-50">Profile</a>
+                    <a href="/settings" className="block rounded-lg px-3 py-2 hover:bg-neutral-50">Settings</a>
+                    <hr className="my-1 border-neutral-200" />
+                    <a href="/auth/logout" className="flex items-center justify-between rounded-lg px-3 py-2 text-red-600 hover:bg-red-50">Logout <LogOut className="h-4 w-4" /></a>
+                  </div>
+                )}
+              </div>
               </div>
             </div>
           </header>

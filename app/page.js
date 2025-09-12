@@ -127,7 +127,7 @@ export default function StreamwardComplianceLanding() {
           </ul>
 
           <div className="hidden items-center gap-3 md:flex">
-            <a href="/auth/login?returnTo=/dashboard" className="text-sm text-neutral-700 hover:text-neutral-900">Login</a>
+            <a href="/auth/login?returnTo=/protected" className="text-sm text-neutral-700 hover:text-neutral-900">Login</a>
             <a href="#get-started" className={cx('inline-flex items-center rounded-xl px-4 py-2 text-sm font-medium text-white shadow-sm transition', brand.bg600, brand.hoverBg500)}>
               Get started
             </a>
