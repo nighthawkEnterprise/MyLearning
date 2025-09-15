@@ -22,6 +22,6 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "app/layout.js", "app/nav.js", "app/protected/page.js", "app/page.jsx"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "app/layout.js", "app/nav.js", "app/api/teacher/login/route.js", "app/components/TeacherLoginCard/TeacherLoginCard.hs", "app/page.js", "app/protected/ProtectedPageClient.js", "app/page.jsx", "app/api/logout/route.js", "middleware.js"],
   "exclude": ["node_modules"]
 }
