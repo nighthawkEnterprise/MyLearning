@@ -1,21 +1,27 @@
 // lib/auth0.ts
 import { Auth0Client } from '@auth0/nextjs-auth0/server';
 
-function req(name: string, v?: string) {
-  if (!v) throw new Error(`Missing env ${name}`);
-  return v.trim();
+function requireUrl(name: string, raw?: string) {
+  if (!raw) throw new Error(`Missing env ${name}`);
+  const v = raw.trim();
+  const withProto = /^https?:\/\//i.test(v) ? v : `https://${v}`;
+  try {
+    // validate absolute URL
+    const u = new URL(withProto);
+    // strip trailing slash for consistency
+    return u.toString().replace(/\/$/, '');
+  } catch {
+    throw new Error(`${name} must be an absolute http(s) URL. Got: ${raw}`);
+  }
 }
 
-const domain = req('AUTH0_DOMAIN', process.env.AUTH0_DOMAIN);           // e.g. https://YOUR_TENANT.us.auth0.com
-const appBaseUrl = req('APP_BASE_URL', process.env.APP_BASE_URL);       // e.g. http://localhost:3000
-const clientId = req('AUTH0_CLIENT_ID', process.env.AUTH0_CLIENT_ID);
-const clientSecret = req('AUTH0_CLIENT_SECRET', process.env.AUTH0_CLIENT_SECRET);
-const secret = req('AUTH0_SECRET', process.env.AUTH0_SECRET);
-
 export const auth0 = new Auth0Client({
-  domain,
-  appBaseUrl,
-  clientId,
-  clientSecret,
-  secret,
+  domain: requireUrl('AUTH0_DOMAIN', process.env.AUTH0_DOMAIN),
+  appBaseUrl: requireUrl(
+    'APP_BASE_URL',
+    process.env.APP_BASE_URL || (process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`)
+  ),
+  clientId: process.env.AUTH0_CLIENT_ID!,
+  clientSecret: process.env.AUTH0_CLIENT_SECRET!,
+  secret: process.env.AUTH0_SECRET!,
 });
