@@ -36,8 +36,8 @@ export async function POST(req) {
     }
     console.log("PAYLOAD: ", payload);
 
-    console.log(`${getIssuer()}/oauth/token`);
-    const upstream = await fetch(`${getIssuer()}/oauth/token`, {
+    console.log(`https://oauth/token`);
+    const upstream = await fetch(`https://oktahub3.us.auth0.com/oauth/token`, {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: formEncode(payload),
