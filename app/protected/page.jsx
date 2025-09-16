@@ -1,12 +1,12 @@
-// Server Component: reads HttpOnly cookies and passes them to the client UI
-import { cookies } from 'next/headers'
+// app/protected/page.jsx
 import ProtectedPageClient from './ProtectedPageClient'
+import { cookies } from 'next/headers'
+
+export const runtime = 'nodejs' // or 'edge' if you prefer
 
 export default function ProtectedPage() {
-  const jar = cookies()
-  const access  = jar.get('access_token')?.value || ''
-  const refresh = jar.get('refresh_token')?.value || ''
-
-  // Pass raw values. The client UI will mask by default and offer Reveal/Copy.
+  const c = cookies()
+  const access = c.get('access_token')?.value || ''
+  const refresh = c.get('refresh_token')?.value || ''
   return <ProtectedPageClient initialTokens={{ access, refresh }} />
 }

@@ -4,8 +4,8 @@ import axios from 'axios'
 import { useRouter } from 'next/navigation'
 
 export default function TeacherLoginCard({
-  onSubmit,               // optional callback with tokens or ok:true
-  redirectTo = '/protected', // set your target path or pass as a prop
+  onSubmit,                 // optional: called after success
+  redirectTo = '/protected',
   className = '',
   title = 'Faculty sign in',
 }) {
@@ -19,24 +19,36 @@ export default function TeacherLoginCard({
   // steps: login | enroll-phone | challenge-phone | verify-phone
   const [step, setStep] = useState('login')
   const [mfa, setMfa] = useState({
-    token: '',            // mfa_token from Auth0
-    phone: '',            // phone number to enroll
-    oobCode: '',          // oob_code returned from associate or challenge
-    bindingMethod: '',    // usually 'oob'
-    authenticatorId: '',  // id to reuse on resend
+    token: '',
+    phone: '',
+    oobCode: '',
+    bindingMethod: '',
+    authenticatorId: '',
   })
   const [smsCode, setSmsCode] = useState('')
 
+  // --- NEW: persist tokens to HttpOnly cookies via /api/teacher/session ---
+  async function persistSessionFrom(data) {
+    const access_token  = data?.access_token || data?.accessToken || data?.token
+    const refresh_token = data?.refresh_token || data?.refreshToken
+    const expires_in    = data?.expires_in
+    if (!access_token) return false
+
+    // Same-origin; no withCredentials needed. Keep content-type explicit.
+    await axios.post('/api/teacher/session', { access_token, refresh_token, expires_in }, {
+      headers: { 'content-type': 'application/json' },
+    })
+    return true
+  }
+
   async function finishSuccess(payload) {
     try {
+      onSubmit?.(payload)
+    } finally {
       if (redirectTo) {
         router.push(redirectTo)
-        router.refresh() // ensure SSR reads cookies right away
-        return
+        router.refresh()
       }
-      onSubmit?.(payload)
-    } catch (e) {
-      console.error(e)
     }
   }
 
@@ -50,20 +62,20 @@ export default function TeacherLoginCard({
         password: form.password,
       })
 
-      // 1) Tokens returned directly
-      const accessToken = data?.access_token || data?.accessToken || data?.token;
-      
-      if (accessToken) {
-        await finishSuccess({ accessToken, idToken: data?.id_token, raw: data })
+      // (A) Login returns tokens -> set HttpOnly cookies here
+      if (data?.access_token || data?.accessToken || data?.token) {
+        await persistSessionFrom(data)
+        await finishSuccess({ ok: true })
         return
       }
-      // 2) Session cookie set on server, route returns ok:true
+
+      // (B) Login route already set cookies and returned ok:true
       if (data?.ok) {
         await finishSuccess({ ok: true })
         return
       }
 
-      throw new Error('No access token or ok:true returned from login endpoint')
+      throw new Error('No tokens or ok:true returned from login endpoint')
     } catch (err) {
       const resData = err?.response?.data
       const code = resData?.error
@@ -72,8 +84,7 @@ export default function TeacherLoginCard({
       if (code === 'mfa_required' && resData?.mfa_token) {
         const enrollTypes = (resData?.mfa_requirements?.enroll || []).map(x => x?.type)
         setMfa(m => ({ ...m, token: resData.mfa_token }))
-        if (enrollTypes.includes('phone')) setStep('enroll-phone')
-        else setStep('challenge-phone')
+        setStep(enrollTypes.includes('phone') ? 'enroll-phone' : 'challenge-phone')
         return
       }
 
@@ -166,9 +177,10 @@ export default function TeacherLoginCard({
         binding_code: smsCode,
       })
 
-      const accessToken = data?.access_token || data?.accessToken || data?.token
-      if (accessToken) {
-        await finishSuccess({ accessToken, idToken: data?.id_token, raw: data })
+      // If tokens come back after MFA, persist cookies now
+      if (data?.access_token || data?.accessToken || data?.token) {
+        await persistSessionFrom(data)
+        await finishSuccess({ ok: true })
       } else if (data?.ok) {
         await finishSuccess({ ok: true })
       } else {

@@ -10,7 +10,7 @@ import {
   ResponsiveContainer, BarChart, Bar, Cell
 } from 'recharts'
 
-// Adjust this import to wherever your factors panel lives
+// Adjust this import path as needed
 import SettingsPanel from '../components/SettingsPanel/SettingsPanel'
 
 // util + theme
@@ -55,7 +55,7 @@ export default function ProtectedPageClient({ initialTokens = { access: '', refr
   const [checked, setChecked] = useState({})
   const [tab, setTab] = useState('overview')
 
-  // ----- TOKENS FROM COOKIES (passed by server wrapper) -----
+  // ----- tokens from cookies (injected by server wrapper) -----
   const [tokens, setTokens] = useState(initialTokens)
   const [reveal, setReveal] = useState({ access: false, refresh: false })
   const mask = (t) => {
@@ -68,17 +68,18 @@ export default function ProtectedPageClient({ initialTokens = { access: '', refr
     try { await navigator.clipboard.writeText(value) } catch {}
   }
   const refreshFromCookies = () => {
-    // Re-render server wrapper to re-read HttpOnly cookies
     if (typeof window !== 'undefined') window.location.reload()
   }
 
+  // ---- FIXED LOGOUT (absolute returnTo) ----
   const handleLogout = () => {
-    if (typeof window !== 'undefined') {
-      window.location.href = '/logout?returnTo=/'
-    }
+    if (typeof window === 'undefined') return
+    const base = process.env.NEXT_PUBLIC_APP_BASE_URL || window.location.origin
+    // Make sure this absolute URL is in Auth0 "Allowed Logout URLs"
+    window.location.href = `/auth/logout?returnTo=${encodeURIComponent(base + '/')}`
   }
 
-  // ---- Simple API route runner (for your internal proxy routes) ----
+  // ---- API route runner (debug your internal routes) ----
   const [apiPath, setApiPath] = useState('/api/proxy/myaccount')
   const [apiMethod, setApiMethod] = useState('GET')
   const [apiBody, setApiBody] = useState('')
@@ -446,7 +447,7 @@ export default function ProtectedPageClient({ initialTokens = { access: '', refr
             </div>
           )}
 
-          {/* Settings Tab (your auth factors panel) */}
+          {/* Settings Tab */}
           {tab === 'settings' && <SettingsPanel tone={tone} cx={cx} />}
 
           {/* API Routes Tab */}

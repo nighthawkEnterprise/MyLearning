@@ -160,6 +160,17 @@ export default function AILearningLanding() {
   const grad = topGradients[v.tone];
   const alpha = toneAlpha[v.tone];
 
+  // NEW: smart login behavior
+  function handleLogin() {
+    if (active === 'students') {
+      window.location.href = '/auth/login?returnTo=/protected';
+    } else {
+      document.getElementById('teacher-login')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // You could also focus the first input after a tick if desired.
+      // setTimeout(() => document.getElementById('teacher-username')?.focus(), 250)
+    }
+  }
+
   return (
     <div className={cx("min-h-screen bg-neutral-50 text-neutral-900 selection:bg-rose-200/60")}>
       {/* Top gradient accents */}
@@ -200,7 +211,9 @@ export default function AILearningLanding() {
 
           {/* Right actions */}
           <div className="hidden items-center gap-3 md:flex">
-            <a href="/auth/login?returnTo=/protected" className="text-sm text-neutral-700 hover:text-neutral-900">Login</a>
+            <button onClick={handleLogin} className="text-sm text-neutral-700 hover:text-neutral-900">
+              Login
+            </button>
             <a href="#" className={cx("inline-flex items-center rounded-xl px-4 py-2 text-sm font-medium text-white shadow-sm transition", tone.bg600, tone.hoverBg500)}>
               Get Started
             </a>
@@ -228,10 +241,10 @@ export default function AILearningLanding() {
             {/* CTAs */}
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <a href="#" className={cx("inline-flex items-center rounded-xl px-5 py-3 text-sm font-medium text-white shadow-sm transition", tone.bg600, tone.hoverBg500)}>Start Free Trial</a>
-              <a href="#" className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-5 py-3 text-sm font-medium text-neutral-800 hover:bg-neutral-50">
+              <button onClick={handleLogin} className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-5 py-3 text-sm font-medium text-neutral-800 hover:bg-neutral-50">
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 5v14l11-7z"/></svg>
-                Schedule Demo
-              </a>
+                {active === 'teachers' ? 'Open Faculty Login' : 'Schedule Demo'}
+              </button>
             </div>
 
             {/* Tiny benefits */}
@@ -265,14 +278,16 @@ export default function AILearningLanding() {
               </div>
             )}
 
-            {/* Teachers: render login directly, with no outer hero card */}
+            {/* Teachers: render login directly, with an anchor */}
             {active === "teachers" ? (
-              <TeacherLoginCard
-                onSubmit={(creds) => {
-                  console.log("Teacher login", creds);
-                }}
-                className="h-full w-full"
-              />
+              <div id="teacher-login" className="scroll-mt-24">
+                <TeacherLoginCard
+                  onSubmit={(creds) => {
+                    console.log("Teacher login", creds);
+                  }}
+                  className="h-full w-full"
+                />
+              </div>
             ) : (
               // Students: keep image inside the outer card
               <div className="relative rounded-3xl border border-neutral-200 bg-white p-2 shadow-lg">
