@@ -1,27 +1,26 @@
 // app/api/teacher/mfa/authenticators/route.js
 import { NextResponse } from 'next/server'
-import { getIssuer } from '../../../_auth0'
+import { getIssuer } from '../../../../api/_auth0'
 
-export async function POST(req) {
+export async function GET(req) {
   try {
-    const { mfa_token } = await req.json()
-    if (!mfa_token) return NextResponse.json({ error: 'mfa_token required' }, { status: 400 })
+    const authz = req.headers.get('authorization')
+    if (!authz) {
+      return NextResponse.json({ error: 'authorization header with Bearer MFA_TOKEN required' }, { status: 400 })
+    }
 
     const r = await fetch(`${getIssuer()}/mfa/authenticators`, {
       method: 'GET',
       headers: {
-        Authorization: `Bearer ${mfa_token}`,
+        'content-type': 'application/json',
+        authorization: authz,
       },
-      cache: 'no-store',
     })
 
-    const text = await r.text()
-    return new NextResponse(text, {
-      status: r.status,
-      headers: { 'content-type': r.headers.get('content-type') || 'application/json' },
-    })
+    const body = await r.json()
+    return NextResponse.json(body, { status: r.status })
   } catch (e) {
-    console.error(e)
-    return NextResponse.json({ error: 'failed to list authenticators' }, { status: 500 })
+    console.error('authenticators route error:', e)
+    return NextResponse.json({ error: 'fetch authenticators failed' }, { status: 500 })
   }
 }

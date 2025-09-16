@@ -1,3 +1,4 @@
+// app/protected/ProtectedPageClient.js
 'use client'
 import React, { useMemo, useState } from 'react'
 import {
@@ -166,7 +167,6 @@ export default function ProtectedPageClient({ initialTokens = { access: '', refr
               { id: 'overview', label: 'Overview' },
               { id: 'assignments', label: 'Assignments' },
               { id: 'practice', label: 'Practice' },
-              { id: 'settings', label: 'Settings' },
               { id: 'api', label: 'API routes' },
             ].map((t) => (
               <button

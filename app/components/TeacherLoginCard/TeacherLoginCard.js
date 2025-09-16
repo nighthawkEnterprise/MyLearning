@@ -1,11 +1,12 @@
+// app/components/TeacherLoginCard.js
 'use client'
 import React, { useState } from 'react'
 import axios from 'axios'
 import { useRouter } from 'next/navigation'
 
 export default function TeacherLoginCard({
-  onSubmit,                 // optional: called after success
-  redirectTo = '/protected',
+  onSubmit,
+  redirectTo = '/teacher',
   className = '',
   title = 'Faculty sign in',
 }) {
@@ -16,7 +17,7 @@ export default function TeacherLoginCard({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  // steps: login | enroll-phone | challenge-phone | verify-phone
+  // steps: login | enroll-phone | verify-phone
   const [step, setStep] = useState('login')
   const [mfa, setMfa] = useState({
     token: '',
@@ -27,14 +28,11 @@ export default function TeacherLoginCard({
   })
   const [smsCode, setSmsCode] = useState('')
 
-  // --- NEW: persist tokens to HttpOnly cookies via /api/teacher/session ---
   async function persistSessionFrom(data) {
     const access_token  = data?.access_token || data?.accessToken || data?.token
     const refresh_token = data?.refresh_token || data?.refreshToken
     const expires_in    = data?.expires_in
     if (!access_token) return false
-
-    // Same-origin; no withCredentials needed. Keep content-type explicit.
     await axios.post('/api/teacher/session', { access_token, refresh_token, expires_in }, {
       headers: { 'content-type': 'application/json' },
     })
@@ -52,6 +50,8 @@ export default function TeacherLoginCard({
     }
   }
 
+  // Submit checks mfa_requirements. If phone challenge is allowed, try to challenge using existing SMS authenticator.
+  // If none exists, fall back to enroll.
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
@@ -62,14 +62,12 @@ export default function TeacherLoginCard({
         password: form.password,
       })
 
-      // (A) Login returns tokens -> set HttpOnly cookies here
       if (data?.access_token || data?.accessToken || data?.token) {
         await persistSessionFrom(data)
         await finishSuccess({ ok: true })
         return
       }
 
-      // (B) Login route already set cookies and returned ok:true
       if (data?.ok) {
         await finishSuccess({ ok: true })
         return
@@ -80,11 +78,24 @@ export default function TeacherLoginCard({
       const resData = err?.response?.data
       const code = resData?.error
 
-      // MFA required
       if (code === 'mfa_required' && resData?.mfa_token) {
-        const enrollTypes = (resData?.mfa_requirements?.enroll || []).map(x => x?.type)
-        setMfa(m => ({ ...m, token: resData.mfa_token }))
-        setStep(enrollTypes.includes('phone') ? 'enroll-phone' : 'challenge-phone')
+        const mfaToken = resData.mfa_token
+        setMfa(m => ({ ...m, token: mfaToken }))
+
+        const challengeTypes = (resData?.mfa_requirements?.challenge || []).map(x => x?.type)
+        const canChallengePhone = challengeTypes.includes('phone')
+
+        if (canChallengePhone) {
+          const smsAuth = await getActiveSmsAuthenticator(mfaToken)
+          if (smsAuth?.id) {
+            await startSmsChallengeExisting(mfaToken, smsAuth.id)
+            return
+          }
+          setStep('enroll-phone')
+          return
+        }
+
+        setStep('enroll-phone')
         return
       }
 
@@ -98,6 +109,39 @@ export default function TeacherLoginCard({
     }
   }
 
+  async function getActiveSmsAuthenticator(mfaToken) {
+    const resp = await axios.get('/api/teacher/mfa/authenticators', {
+      headers: {
+        authorization: `Bearer ${mfaToken}`,
+        'content-type': 'application/json',
+      },
+    })
+    const list = Array.isArray(resp.data) ? resp.data : []
+    return list.find(
+      a => a?.authenticator_type === 'oob' && a?.oob_channel === 'sms' && a?.active
+    )
+  }
+
+  async function startSmsChallengeExisting(mfaToken, authenticatorId) {
+    const ch = await axios.post('/api/teacher/mfa/challenge', {
+      challenge_type: 'oob',
+      authenticator_id: authenticatorId,
+      mfa_token: mfaToken,
+    })
+
+    const oobCode = ch.data?.oob_code
+    if (!oobCode) throw new Error('No oob_code from challenge')
+
+    setMfa(s => ({
+      ...s,
+      authenticatorId,
+      oobCode,
+      bindingMethod: ch.data?.binding_method || 'prompt',
+    }))
+    setStep('verify-phone')
+  }
+
+  // Enroll via associate, which also sends the challenge and returns oob_code
   async function enrollPhone() {
     setError('')
     try {
@@ -107,21 +151,20 @@ export default function TeacherLoginCard({
 
       const assoc = await axios.post('/api/teacher/mfa/associate', {
         mfa_token: mfa.token,
-        type: 'oob',
-        oob_channel: 'sms',
+        authenticator_types: ['oob'],
+        oob_channels: ['sms'],
         phone_number: mfa.phone,
       })
-      const authenticatorId = assoc.data?.authenticator_id
-      if (!authenticatorId) throw new Error('No authenticator_id from associate')
 
-      const ch = await axios.post('/api/teacher/mfa/challenge-phone', {
-        mfa_token: mfa.token,
-        authenticator_id: authenticatorId,
-      })
-      const oobCode = ch.data?.oob_code
-      if (!oobCode) throw new Error('No oob_code from challenge')
+      const oobCode = assoc.data?.oob_code
+      if (!oobCode) throw new Error('No oob_code from associate')
 
-      setMfa(s => ({ ...s, authenticatorId, oobCode, bindingMethod: ch.data?.binding_method || 'oob' }))
+      setMfa(s => ({
+        ...s,
+        authenticatorId: '',
+        oobCode,
+        bindingMethod: assoc.data?.binding_method || 'prompt',
+      }))
       setStep('verify-phone')
     } catch (err) {
       const resData = err?.response?.data
@@ -129,34 +172,6 @@ export default function TeacherLoginCard({
         typeof resData === 'string'
           ? resData
           : resData?.error_description || resData?.error || err?.message || 'Could not enroll phone'
-      )
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function startPhoneChallenge() {
-    setError('')
-    try {
-      setLoading(true)
-      if (!mfa.token) throw new Error('Missing mfa_token in state')
-
-      const ch = await axios.post('/api/teacher/mfa/challenge-phone', {
-        mfa_token: mfa.token,
-        authenticator_id: mfa.authenticatorId || undefined,
-      })
-      const oobCode = ch.data?.oob_code
-      const authenticatorId = ch.data?.authenticator_id || mfa.authenticatorId || ''
-      if (!oobCode || !authenticatorId) throw new Error('Challenge did not return oob_code')
-
-      setMfa(s => ({ ...s, oobCode, authenticatorId, bindingMethod: ch.data?.binding_method || 'oob' }))
-      setStep('verify-phone')
-    } catch (err) {
-      const resData = err?.response?.data
-      setError(
-        typeof resData === 'string'
-          ? resData
-          : resData?.error_description || resData?.error || err?.message || 'Could not send SMS'
       )
     } finally {
       setLoading(false)
@@ -177,7 +192,6 @@ export default function TeacherLoginCard({
         binding_code: smsCode,
       })
 
-      // If tokens come back after MFA, persist cookies now
       if (data?.access_token || data?.accessToken || data?.token) {
         await persistSessionFrom(data)
         await finishSuccess({ ok: true })
@@ -217,13 +231,11 @@ export default function TeacherLoginCard({
         <h3 className="mt-2 text-xl md:text-2xl font-semibold text-indigo-700">
           {step === 'login' && title}
           {step === 'enroll-phone' && 'Enroll your phone'}
-          {step === 'challenge-phone' && 'Check your phone'}
           {step === 'verify-phone' && 'Enter the code we sent'}
         </h3>
         <p className="mt-1 text-xs md:text-sm text-neutral-500">
           {step === 'login' && 'Sign in to access classes and assessments'}
           {step === 'enroll-phone' && 'Add a phone number to secure your account'}
-          {step === 'challenge-phone' && 'We will text you a code to finish signing in'}
           {step === 'verify-phone' && 'Type the 6 digit code from your text message'}
         </p>
       </div>
@@ -252,7 +264,12 @@ export default function TeacherLoginCard({
             className="block w-full rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm text-neutral-900 placeholder-neutral-400 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
           />
           <div className="mt-6 flex gap-2">
-            <button type="button" onClick={enrollPhone} disabled={loading || !mfa.phone} className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:opacity-70">
+            <button
+              type="button"
+              onClick={enrollPhone}
+              disabled={loading || !mfa.phone}
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:opacity-70"
+            >
               {loading && (
                 <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="12" cy="12" r="9" className="opacity-20" />
@@ -261,29 +278,11 @@ export default function TeacherLoginCard({
               )}
               Send code
             </button>
-            <button type="button" onClick={() => setStep('login')} className="rounded-xl border border-neutral-300 px-4 py-3 text-sm font-semibold text-neutral-700 hover:bg-neutral-50">
-              Back
-            </button>
-          </div>
-        </>
-      )
-    }
-
-    if (step === 'challenge-phone') {
-      return (
-        <>
-          <p className="text-sm text-neutral-700">We will text a code to your phone on file.</p>
-          <div className="mt-6 flex gap-2">
-            <button type="button" onClick={startPhoneChallenge} disabled={loading} className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:opacity-70">
-              {loading && (
-                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="9" className="opacity-20" />
-                  <path d="M21 12a9 9 0 0 1-9 9" />
-                </svg>
-              )}
-              Send code
-            </button>
-            <button type="button" onClick={() => setStep('login')} className="rounded-xl border border-neutral-300 px-4 py-3 text-sm font-semibold text-neutral-700 hover:bg-neutral-50">
+            <button
+              type="button"
+              onClick={() => setStep('login')}
+              className="rounded-xl border border-neutral-300 px-4 py-3 text-sm font-semibold text-neutral-700 hover:bg-neutral-50"
+            >
               Back
             </button>
           </div>
@@ -304,7 +303,12 @@ export default function TeacherLoginCard({
             className="block w-full rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm text-neutral-900 placeholder-neutral-400 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 tracking-widest"
           />
           <div className="mt-6 flex gap-2">
-            <button type="button" onClick={verifyCode} disabled={loading || !smsCode} className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:opacity-70">
+            <button
+              type="button"
+              onClick={verifyCode}
+              disabled={loading || !smsCode}
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:opacity-70"
+            >
               {loading && (
                 <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="12" cy="12" r="9" className="opacity-20" />
@@ -315,13 +319,17 @@ export default function TeacherLoginCard({
             </button>
             <button
               type="button"
-              onClick={() => (mfa.authenticatorId ? startPhoneChallenge() : enrollPhone())}
+              onClick={() => (mfa.authenticatorId ? startSmsChallengeExisting(mfa.token, mfa.authenticatorId) : enrollPhone())}
               className="rounded-xl border border-neutral-300 px-4 py-3 text-sm font-semibold text-neutral-700 hover:bg-neutral-50"
             >
               Resend code
             </button>
           </div>
-          <button type="button" onClick={() => setStep('login')} className="mt-2 text-xs font-medium text-indigo-600 hover:text-indigo-500">
+          <button
+            type="button"
+            onClick={() => setStep('login')}
+            className="mt-2 text-xs font-medium text-indigo-600 hover:text-indigo-500"
+          >
             Use a different account
           </button>
         </>
@@ -383,7 +391,11 @@ export default function TeacherLoginCard({
                 </div>
               </div>
 
-              <button type="submit" disabled={loading} className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-70">
+              <button
+                type="submit"
+                disabled={loading}
+                className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-70"
+              >
                 {loading && (
                   <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="12" cy="12" r="9" className="opacity-20" />

@@ -1,3 +1,4 @@
+// app/page.js
 'use client'
 import React, { useState } from "react";
 import TeacherLoginCard from "./components/TeacherLoginCard/TeacherLoginCard";

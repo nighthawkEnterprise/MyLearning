@@ -44,6 +44,7 @@ export async function POST(req) {
     })
 
     const data = await upstream.json()
+    console.log("DATA: ", data);
     if (!upstream.ok) {
       // pass upstream error to client
       return NextResponse.json(data, { status: upstream.status })
