@@ -33,6 +33,7 @@ export async function POST(req) {
         'openid profile email offline_access read:me:authentication_methods create:me:authentication_methods read:me:factors',
       client_id: process.env.AUTH0_CLIENT_ID || '',
       client_secret: process.env.AUTH0_CLIENT_SECRET || '',
+      force_mfa: '1'
     }
     console.log("PAYLOAD: ", payload);
 
