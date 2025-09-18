@@ -6,8 +6,12 @@ const CLIENT_ID = process.env.AUTH0_CLIENT_ID
 const CLIENT_SECRET = process.env.AUTH0_CLIENT_SECRET
 
 export async function POST(req) {
+  console.log("Challenge Hit");
   try {
     const { challenge_type, authenticator_id, mfa_token } = await req.json()
+    console.log("challenge_type: ", challenge_type);
+    console.log("authenticator_id: ", authenticator_id);
+    console.log("mfa_token: ", mfa_token);
 
     if (!challenge_type || !authenticator_id || !mfa_token) {
       return NextResponse.json({ error: 'challenge_type, authenticator_id, and mfa_token are required' }, { status: 400 })
@@ -23,7 +27,7 @@ export async function POST(req) {
       authenticator_id,
       mfa_token,
     }
-
+    console.log("Paylaod:", payload);
     const r = await fetch(`${getIssuer()}/mfa/challenge`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -31,6 +35,7 @@ export async function POST(req) {
     })
 
     const body = await r.json()
+    console.log("Challenge Response: ", body);
     return NextResponse.json(body, { status: r.status })
   } catch (e) {
     console.error('challenge route error:', e)

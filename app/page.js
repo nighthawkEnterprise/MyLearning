@@ -57,14 +57,14 @@ export default function AILearningLanding() {
     },
     solutions: {
       students: [
-        "/images/solutions-students-1.jpg",
-        "/images/solutions-students-2.jpg",
-        "/images/solutions-students-3.jpg",
+        "/solutions-students-1.jpg",
+        "/solutions-students-2.jpg",
+        "/solutions-students-3.jpg",
       ],
       teachers: [
-        "/images/solutions-teachers-1.jpg",
-        "/images/solutions-teachers-2.jpg",
-        "/images/solutions-teachers-3.jpg",
+        "/solutions-teachers-1.png",
+        "/solutions-teachers-2.png",
+        "/solutions-teachers-3.png",
       ],
     },
   };
@@ -382,16 +382,50 @@ export default function AILearningLanding() {
         </section>
 
         {/* Logos */}
-        <section aria-label="Trusted by" className="relative z-10 border-t border-neutral-200/60 bg-white/60">
-          <div className="mx-auto max-w-7xl px-4 py-10 md:px-6">
-            <p className="mb-6 text-center text-sm text-neutral-500">Trusted by institutions and enterprises</p>
-            <div className="grid grid-cols-2 place-items-center gap-6 sm:grid-cols-4 md:grid-cols-6">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-10 w-28 rounded-md bg-neutral-200" />
-              ))}
-            </div>
-          </div>
-        </section>
+        {/* Trusted by */}
+        {/* Trusted by */}
+   {/* Trusted by */}
+      {/* Trusted by */}
+      <section aria-label="Trusted by" className="relative z-10 border-t border-neutral-200/60 bg-white/60">
+        <div className="mx-auto max-w-7xl px-4 py-10 md:px-6">
+          <p className="mb-6 text-center text-sm text-neutral-500">
+            Trusted by institutions and enterprises
+          </p>
+
+          {(() => {
+            const brands = [
+              { src: "/brand1.png", alt: "Brand 1" },
+              { src: "/brand2.png", alt: "Brand 2" },
+              { src: "/brand7.png", alt: "Brand 3" },
+              { src: "/brand4.png", alt: "Brand 4" },
+              { src: "/brand5.png", alt: "Brand 5" },
+              { src: "/brand6.png", alt: "Brand 6" },
+            ];
+
+            return (
+              <ul className="flex flex-wrap items-center justify-between gap-y-10 sm:gap-y-12">
+                {brands.map((b, i) => (
+                  <li
+                    key={i}
+                    className="flex basis-1/2 sm:basis-1/3 md:basis-1/6 items-center justify-center px-8"
+                  >
+                    <img
+                      src={b.src}
+                      alt={b.alt}
+                      loading="lazy"
+                      className="h-auto w-auto max-h-12 md:max-h-16 object-contain opacity-90 transition hover:opacity-100"
+                    />
+                  </li>
+                ))}
+              </ul>
+            );
+          })()}
+        </div>
+      </section>
+
+
+
+
 
         {/* Testimonials */}
         <section className="relative z-10">
