@@ -19,14 +19,14 @@ export async function POST(req) {
       )
     }
     // console.log("SCOPE REQUESTED :", process.env.auth0_scope);
-
+    console.log("getIssuer: ", getIssuer());
     // Build payload variables explicitly
     const payload = {
       grant_type: 'password',
       username,
       password,
       // use env if set, else default to My Account API per your example
-      audience: process.env.AUTH0_AUDIENCE ?? 'https://oktahub3.us.auth0.com/me/',
+      audience: 'https://oktahub3.us.auth0.com/me/',
       scope:
         process.env.AUTH0_SCOPE ??
         'openid profile email offline_access read:me:authentication_methods create:me:authentication_methods read:me:factors',
