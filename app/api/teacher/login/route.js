@@ -19,7 +19,7 @@ export async function POST(req) {
       )
     }
     // console.log("SCOPE REQUESTED :", process.env.auth0_scope);
-    console.log("getIssuer: ", getIssuer());
+
     // Build payload variables explicitly
     const payload = {
       grant_type: 'password',
@@ -32,7 +32,9 @@ export async function POST(req) {
         'openid profile email offline_access read:me:authentication_methods create:me:authentication_methods read:me:factors',
       client_id: process.env.AUTH0_CLIENT_ID || '',
       client_secret: process.env.AUTH0_CLIENT_SECRET || '',
+      force_mfa: 1
     }
+
     console.log("PAYLOAD: ", payload);
 
     const upstream = await fetch(`${getIssuer()}/oauth/token`, {
@@ -42,6 +44,7 @@ export async function POST(req) {
     })
 
     const data = await upstream.json()
+    console.log("DATA: ", data);
     if (!upstream.ok) {
       // pass upstream error to client
       return NextResponse.json(data, { status: upstream.status })
@@ -67,6 +70,7 @@ export async function POST(req) {
         maxAge: data.expires_in || 3600,
       })
     }
+    console.log("RES: ", res);
     return res
   } catch (err) {
     console.error('login route error:', err)
