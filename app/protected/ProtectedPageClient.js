@@ -73,10 +73,10 @@ export default function ProtectedPageClient({ initialTokens = { access: '', refr
     if (typeof window !== 'undefined') window.location.reload()
   }
 
-  const handleLogout = () => {
-    if (typeof window !== 'undefined') {
-      window.location.href = '/logout?returnTo=/'
-    }
+    const handleLogout = () => {
+    if (typeof window === 'undefined') return
+    const base = process.env.NEXT_PUBLIC_APP_BASE_URL || window.location.origin
+    window.location.href = `/auth/logout?returnTo=${encodeURIComponent(base + '/')}`
   }
 
   // ---- Simple API route runner (for your internal proxy routes) ----
