@@ -54,6 +54,8 @@ export async function POST(req) {
       challenge_type: 'oob',
       authenticator_id: chosenId,
       mfa_token,
+      audience: process.env.AUTH0_AUDIENCE || 'https://oktahub3.us.auth0.com/me/',
+
     }
 
     const chRes = await fetch(`${getIssuer()}/mfa/challenge`, {
