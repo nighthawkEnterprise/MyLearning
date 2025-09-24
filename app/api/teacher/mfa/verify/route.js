@@ -19,7 +19,7 @@ export async function POST(req) {
       audience: process.env.AUTH0_AUDIENCE || undefined,
       scope: process.env.AUTH0_SCOPE || 'openid profile email',
     }
-
+    console.log("PARAMS:", params);
     const r = await fetch(`https://oktahub3.us.auth0.com/oauth/token`, {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
