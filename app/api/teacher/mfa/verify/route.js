@@ -16,7 +16,7 @@ export async function POST(req) {
       binding_code,
       client_id: process.env.AUTH0_CLIENT_ID || '',
       client_secret: process.env.AUTH0_CLIENT_SECRET || '',
-      audience: process.env.AUTH0_AUDIENCE || undefined,
+      audience: process.env.AUTH0_AUDIENCE || 'https://oktahub3.us.auth0.com/me/',
       scope: process.env.AUTH0_SCOPE || 'openid profile email',
     }
     console.log("PARAMS:", params);
