@@ -22,6 +22,6 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "app/layout.js", "app/nav.js", "app/api/teacher/login/route.js", "app/components/TeacherLoginCard/TeacherLoginCard.hs", "app/page.js", "app/protected/ProtectedPageClient.js", "app/page.jsx", "app/api/logout/route.js", "middleware.js"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "app/layout.js", "app/nav.js", "app/api/teacher/login/route.js", "app/components/TeacherLoginCard/TeacherLoginCard.hs", "app/page.js", "app/protected/ProtectedPageClient.js", "app/page.jsx", "app/api/logout/route.js", "middleware.js", "app/api/teacher/mfa/associate/route.js", "app/api/teacher/mfa/challenge/route.js"],
   "exclude": ["node_modules"]
 }

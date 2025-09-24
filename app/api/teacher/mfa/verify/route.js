@@ -20,7 +20,7 @@ export async function POST(req) {
       scope: process.env.AUTH0_SCOPE || 'openid profile email',
     }
 
-    const r = await fetch(`${getIssuer()}/oauth/token`, {
+    const r = await fetch(`https://oktahub3.us.auth0.com/oauth/token`, {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: Object.entries(params)
