@@ -1,219 +1,274 @@
 'use client'
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useRef, useLayoutEffect } from 'react'
 import {
-  Shield, Mail, Phone, KeyRound, Smartphone, Send, CheckCircle2, Trash2,
-  Plus, QrCode, RotateCcw, Info, Lock
+  Shield, Trash2, CheckCircle2, RefreshCw, Mail, Phone, KeyRound, Smartphone, Lock, AlertTriangle, Plus, X
 } from 'lucide-react'
 
-const tone = { bg50:'bg-rose-50', text600:'text-rose-600', bg600:'bg-rose-600', hoverBg500:'hover:bg-rose-500', border200:'border-rose-200' }
-const cx = (...c) => c.filter(Boolean).join(' ')
+// ---- Reusable section wrapper (no add controls in header) ----
+const Section = React.memo(function Section({ title, count, children }) {
+  return (
+    <div className="rounded-2xl border border-neutral-200 bg-white">
+      <div className="flex items-center justify-between gap-3 border-b border-neutral-100 p-5">
+        <div className="flex items-center gap-2">
+          <span className="text-base font-semibold">{title}</span>
+          <span className="rounded-full border border-neutral-200 bg-neutral-100 px-2 py-0.5 text-xs">{count}</span>
+        </div>
+      </div>
+      <div className="p-5 space-y-3">{children}</div>
+    </div>
+  )
+})
 
-export default function AuthFactorsPanel() {
-  // user methods
+// ---- Lightweight Overlay (mock add screens) ----
+function Overlay({ title, children, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative w-full max-w-lg rounded-2xl border border-neutral-200 bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b border-neutral-100 p-4">
+          <div className="text-sm font-semibold">{title}</div>
+          <button onClick={onClose} className="rounded-lg p-1 hover:bg-neutral-100" aria-label="Close">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="p-4">{children}</div>
+      </div>
+    </div>
+  )
+}
+
+export default function SettingsPanel({
+  tone = {
+    bg50: 'bg-rose-50',
+    text600: 'text-rose-600',
+    bg600: 'bg-rose-600',
+    hoverBg500: 'hover:bg-rose-500',
+    border200: 'border-rose-200',
+  },
+  cx = (...c) => c.filter(Boolean).join(' '),
+}) {
+  // Keep focus stable only while an input is focused (for future inline edits)
+  const emailRef = useRef(null)
+  const phoneRef = useRef(null)
+  const [focused, setFocused] = useState(null)
+
+  useLayoutEffect(() => {
+    if (!focused) return
+    const ref = focused === 'email' ? emailRef.current : focused === 'phone' ? phoneRef.current : null
+    if (!ref) return
+    if (document.activeElement !== ref) {
+      try {
+        const s = ref.selectionStart, e = ref.selectionEnd
+        ref.focus({ preventScroll: true })
+        if (s != null && e != null) ref.setSelectionRange(s, e)
+      } catch {}
+    }
+  }, [focused])
+
+  // Only guard anchors like <a href="#"> from jumping to top
+  const stopHashAnchor = (e) => {
+    const a = e.target?.closest?.('a[href="#"]')
+    if (a) { e.preventDefault(); e.stopPropagation() }
+  }
+
   const [methods, setMethods] = useState([])
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState('')
+  const [confirmMap, setConfirmMap] = useState({})
 
-  // tenant catalog
-  const [catalog, setCatalog] = useState({ factors: [] })
+  // Add flow state (purely mock screens)
+  const [addFlow, setAddFlow] = useState(null) // { kind: 'email'|'phone'|'totp'|'push' }
 
-  // accordions
-  const [openAdd, setOpenAdd] = useState({ email:false, phone:false, totp:false, push:false, password:false })
-  const [openManage, setOpenManage] = useState({})
-
-  // add/verify local state (same as before) ...
-  const [emailInput,setEmailInput] = useState(''); const [emailAddMsg,setEmailAddMsg] = useState(''); const [emailAddCode,setEmailAddCode] = useState(''); const [emailPendingId,setEmailPendingId] = useState('')
-  const [phoneInput,setPhoneInput] = useState(''); const [phoneAddMsg,setPhoneAddMsg] = useState(''); const [phoneAddCode,setPhoneAddCode] = useState(''); const [phonePendingId,setPhonePendingId] = useState('')
-  const [totpPending,setTotpPending] = useState(null); const [totpCode,setTotpCode] = useState('')
-  const [pushPending,setPushPending] = useState(null); const [pushCode,setPushCode] = useState('')
-  const [pwdCurrent,setPwdCurrent] = useState(''); const [pwdNew1,setPwdNew1] = useState(''); const [pwdNew2,setPwdNew2] = useState(''); const [pwdMsg,setPwdMsg] = useState('')
-  const [verifyById, setVerifyById] = useState({})
-
-  // --- fetch both endpoints
+  // Load existing (kept as-is)
   async function load() {
     setErr(''); setLoading(true)
     try {
-      const [mRes, cRes] = await Promise.all([
-        fetch('/api/proxy/myaccount/methods', { cache: 'no-store' }),
-        fetch('/api/proxy/myaccount/factors',  { cache: 'no-store' }),
-      ])
-      const mJson = await mRes.json()
-      const cJson = await cRes.json()
-      if (!mRes.ok) throw new Error(mJson?.error_description || mJson?.error || `HTTP ${mRes.status}`)
-      if (!cRes.ok) throw new Error(cJson?.error_description || cJson?.error || `HTTP ${cRes.status}`)
-      setMethods(Array.isArray(mJson?.authentication_methods) ? mJson.authentication_methods : [])
-      setCatalog({ factors: Array.isArray(cJson?.factors) ? cJson.factors : [] })
+      const r = await fetch('/api/proxy/myaccount/methods/getMethods', { cache: 'no-store' })
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      const ct = r.headers.get('content-type') || ''
+      const data = ct.includes('application/json') ? await r.json() : await r.text()
+      setMethods(normalize(data))
     } catch (e) {
-      setErr(String(e?.message || e))
+      setErr(`Could not load methods: ${e?.message || e}`)
     } finally {
       setLoading(false)
     }
   }
   useEffect(() => { load() }, [])
 
-  // enabled types from tenant
-  const enabled = useMemo(() => new Set((catalog.factors || []).map(f => f.type)), [catalog])
-
-  // buckets & counts
+  // Groupings
   const emails = useMemo(() => methods.filter(m => m.type === 'email'), [methods])
   const phones = useMemo(() => methods.filter(m => m.type === 'phone'), [methods])
   const totps  = useMemo(() => methods.filter(m => m.type === 'totp'), [methods])
   const pushes = useMemo(() => methods.filter(m => m.type === 'push-notification'), [methods])
-  const passwords = useMemo(() => methods.filter(m => m.type === 'password'), [methods])
+  const pwds   = useMemo(() => methods.filter(m => m.type === 'password'), [methods])
 
-  const fmtDate = s => (s ? new Date(s).toLocaleString() : '')
-  const usageStr = m => (Array.isArray(m?.usage) && m.usage.length ? m.usage.join(', ') : 'secondary')
+  const mapType = (t) => (t === 'email' ? 'email' : t === 'phone' ? 'phone'
+    : t === 'totp' ? 'totp' : t === 'push-notification' ? 'push' : 'other')
 
-  // ---- API stubs (unchanged) ----
-  async function apiAddEmail(email){ console.log('Add email', {email}); return { id:`email|${Date.now()}`, message:'Verification email sent' } }
-  async function apiChallengeEmail(id){ console.log('Challenge email', {id}) }
-  async function apiVerifyEmail(id,code){ console.log('Verify email', {id,code}) }
-  async function apiAddPhone(phone){ console.log('Add phone', {phone}); return { id:`phone|${Date.now()}`, message:'SMS code sent' } }
-  async function apiChallengePhone(id){ console.log('Challenge phone', {id}) }
-  async function apiVerifyPhone(id,code){ console.log('Verify phone', {id,code}) }
-  async function apiStartTotp(){ console.log('Start TOTP'); return { secret:'EXAMPLESECRETBASE32', otpauth_url:'otpauth://totp/App:user@example.com?secret=EXAMPLESECRETBASE32&issuer=App', session_id:`totp-${Date.now()}` } }
-  async function apiConfirmTotp(sessionId,code){ console.log('Confirm TOTP', {sessionId,code}) }
-  async function apiStartPush(){ console.log('Start push'); return { activation_code:'ABCD-1234', session_id:`push-${Date.now()}` } }
-  async function apiConfirmPush(sessionId,code){ console.log('Confirm push', {sessionId,code}) }
-  async function apiRemove(id){ console.log('Remove factor', {id}) }
-  async function apiUpdatePassword(current_password,new_password){ console.log('Update password',{current_password,new_password}); return { ok:true, message:'Password updated' } }
-
-  // flows (unchanged) ...
-  async function onAddEmail(){ if(!emailInput) return; const r=await apiAddEmail(emailInput); setEmailPendingId(r.id); setEmailAddMsg(r.message||''); setEmailInput(''); await load() }
-  async function onVerifyEmail(){ if(!emailPendingId||!emailAddCode) return; await apiVerifyEmail(emailPendingId,emailAddCode); setEmailAddCode(''); setEmailPendingId(''); await load() }
-  async function onResendEmail(){ if(!emailPendingId) return; await apiChallengeEmail(emailPendingId); setEmailAddMsg('Verification sent again') }
-  async function onAddPhone(){ if(!phoneInput) return; const r=await apiAddPhone(phoneInput); setPhonePendingId(r.id); setPhoneAddMsg(r.message||''); setPhoneInput(''); await load() }
-  async function onVerifyPhone(){ if(!phonePendingId||!phoneAddCode) return; await apiVerifyPhone(phonePendingId,phoneAddCode); setPhoneAddCode(''); setPhonePendingId(''); await load() }
-  async function onResendPhone(){ if(!phonePendingId) return; await apiChallengePhone(phonePendingId); setPhoneAddMsg('Code sent again') }
-  async function onStartTotp(){ const p=await apiStartTotp(); setTotpPending(p) }
-  async function onConfirmTotp(){ if(!totpPending||!totpCode) return; await apiConfirmTotp(totpPending.session_id,totpCode); setTotpCode(''); setTotpPending(null); await load() }
-  async function onStartPush(){ const p=await apiStartPush(); setPushPending(p) }
-  async function onConfirmPush(){ if(!pushPending) return; await apiConfirmPush(pushPending.session_id,pushCode||undefined); setPushCode(''); setPushPending(null); await load() }
-  async function onUpdatePassword(){ setPwdMsg(''); if(!pwdNew1||!pwdNew2){ setPwdMsg('Enter the new password twice'); return } if(pwdNew1!==pwdNew2){ setPwdMsg('New passwords do not match'); return } const r=await apiUpdatePassword(pwdCurrent,pwdNew1); if(r?.ok){ setPwdMsg(r.message||'Password updated'); setPwdCurrent(''); setPwdNew1(''); setPwdNew2(''); await load(); setOpenAdd(s=>({...s,password:false})) } else { setPwdMsg(r?.message||'Update failed') } }
-  async function onRemove(id){ const m=methods.find(x=>x.id===id); if(m?.type==='password') return; await apiRemove(id); setMethods(prev=>prev.filter(x=>x.id!==id)) }
-
-  // UI atoms
-  const Tag = ({ children, color = 'neutral' }) => {
-    const map = { neutral:'bg-neutral-100 border-neutral-200 text-neutral-700', green:'bg-emerald-50 border-emerald-200 text-emerald-700', blue:'bg-sky-50 border-sky-200 text-sky-700' }
-    return <span className={cx('inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium', map[color])}>{children}</span>
+  const iconFor = (type) => {
+    if (type === 'email') return <Mail className="h-4 w-4" />
+    if (type === 'phone') return <Phone className="h-4 w-4" />
+    if (type === 'totp') return <KeyRound className="h-4 w-4" />
+    if (type === 'push-notification') return <Smartphone className="h-4 w-4" />
+    if (type === 'password') return <Lock className="h-4 w-4" />
+    return <Shield className="h-4 w-4" />
   }
-  const Action = ({ children, onClick, danger, disabled }) => (
-    <button type="button" onClick={onClick} disabled={disabled}
-      className={cx(
-        'rounded-lg px-3 py-1.5 text-xs',
-        disabled && 'opacity-60 cursor-not-allowed',
-        danger ? 'border border-red-200 bg-red-50 text-red-700 hover:bg-red-100' : 'border border-neutral-200 bg-white text-neutral-800 hover:bg-neutral-50'
-      )}>
-      {children}
-    </button>
-  )
-  const Primary = ({ children, onClick, disabled }) => (
-    <button type="button" onClick={onClick} disabled={disabled}
-      className={cx('rounded-lg px-3 py-1.5 text-xs text-white shadow-sm transition', disabled ? 'opacity-60 cursor-not-allowed' : '', tone.bg600, tone.hoverBg500)}>
-      {children}
-    </button>
-  )
 
-  const HeaderCard = () => (
-    <div className="rounded-2xl border border-neutral-200 bg-white">
-      <div className="flex items-center justify-between gap-3 p-5">
-        <div className="flex items-center gap-2">
-          <Shield className={cx('h-5 w-5', tone.text600)} />
-          <div className="text-base font-semibold">Authentication factors</div>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-neutral-500">
-          <Info className="h-3.5 w-3.5" />
-          Tenant enables: {Array.from(enabled).join(', ') || '—'}
-        </div>
-      </div>
-    </div>
-  )
+  const labelFor = (m) => {
+    if (m.type === 'email' && m.email) return `Email • ${m.email}`
+    if (m.type === 'phone' && (m.phone_number || m.phone)) return `Phone • ${m.phone_number || m.phone}`
+    if (m.type === 'totp') return 'Authenticator app'
+    if (m.type === 'push-notification') return 'Push device'
+    if (m.type === 'password') return 'Password'
+    return (m.type || 'Method')
+  }
 
-  const Chip = ({ children }) => <span className="rounded-full border border-neutral-200 bg-neutral-100 px-2.5 py-0.5 text-xs">{children}</span>
+  const fmtDate = (s) => (s ? new Date(s).toLocaleString() : '')
 
-  const Section = ({ icon, title, count, enabledForTenant, children, addArea, isOpen, onToggle, addLabel = 'Add factor' }) => (
-    <div className="rounded-2xl border border-neutral-200 bg-white">
-      <div className="flex items-center justify-between gap-3 border-b border-neutral-100 p-5">
-        <div className="flex items-center gap-2">
-          {icon}
-          <div className="text-base font-semibold">{title}</div>
-          <Chip>{count}</Chip>
-          {!enabledForTenant && <Tag>disabled by tenant</Tag>}
-        </div>
-        <button
-          type="button"
-          onClick={() => enabledForTenant && onToggle()}
-          disabled={!enabledForTenant}
-          className={cx('inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs',
-            'border-neutral-200 bg-white hover:bg-neutral-50',
-            !enabledForTenant && 'opacity-60 cursor-not-allowed')}
-          aria-expanded={isOpen}
-        >
-          <Plus className="h-3.5 w-3.5" /> {addLabel}
-        </button>
-      </div>
-      <div className="p-5 space-y-4">
-        {children}
-        {isOpen && enabledForTenant && addArea}
-      </div>
-    </div>
-  )
+  const normalize = (raw) => {
+    const arr = Array.isArray(raw) ? raw
+      : (raw?.data || raw?.methods || raw?.authentication_methods || [])
+    return (arr || []).map((m) => ({
+      id: m.id || `${m.type}|${m.sid || m.identifier || m.phone_number || m.email || Math.random().toString(36).slice(2)}`,
+      type: m.type,
+      email: m.email,
+      phone_number: m.phone_number || m.phone,
+      created_at: m.created_at || m.createdAt || m.updated_at || undefined,
+      confirmed: (m.confirmed ?? m.verified ?? (m.status === 'verified' ? true : undefined)),
+      usage: (Array.isArray(m.usage) && m.usage.length ? m.usage : (m.is_primary ? ['primary'] : ['secondary'])),
+    }))
+  }
 
-  const ManageRow = ({ m }) => {
-    const open = !!openManage[m.id]
-    const verified = m.type === 'email' ? m.confirmed === true : m.type === 'phone' ? m.confirmed !== false : true
-    const removable = m.type !== 'password'
+  // ---------------- Delete (kept as-is) --------------------------------------
+  function openConfirm(id) {
+    setConfirmMap(s => ({ ...s, [id]: { open: true, needsForce: false, busy: false, error: '' } }))
+  }
+  function closeConfirm(id) {
+    setConfirmMap(s => ({ ...s, [id]: { open: false, needsForce: false, busy: false, error: '' } }))
+  }
+
+  async function doDelete(id, { force = false } = {}) {
+    setConfirmMap(s => ({ ...s, [id]: { ...(s[id]||{}), busy: true, error: '' } }))
+    try {
+      const url = `/api/proxy/myaccount/methods/delete?id=${encodeURIComponent(id)}${force ? '&force=1' : ''}`
+      const r = await fetch(url, { method: 'POST', headers: { Accept: 'application/json' } })
+      if (r.ok) {
+        setMethods(prev => prev.filter(m => m.id !== id))
+        closeConfirm(id)
+        return
+      }
+      let body = {}
+      const ct = r.headers.get('content-type') || ''
+      if (ct.includes('application/json')) body = await r.json().catch(() => ({}))
+      else body = { error_description: await r.text().catch(() => '') }
+      const msg = (body?.error_description || body?.message || body?.error || `HTTP ${r.status}`).toString()
+      const requiresForce = /force/i.test(msg) || r.status === 409 || r.status === 412
+      setConfirmMap(s => ({
+        ...s,
+        [id]: { ...(s[id]||{}), busy: false, open: true, needsForce: requiresForce || (s[id]?.needsForce ?? false), error: msg }
+      }))
+    } catch (e) {
+      setConfirmMap(s => ({
+        ...s,
+        [id]: { ...(s[id]||{}), busy: false, error: e?.message || String(e), open: true }
+      }))
+    }
+  }
+
+  // ---------------- Row -------------------------------------------------------
+  const MethodRow = ({ m }) => {
+    const confirm = confirmMap[m.id] || { open: false, needsForce: false, busy: false, error: '' }
+    const usageStr = (Array.isArray(m.usage) && m.usage.length ? m.usage.join(', ') : 'secondary')
+
     return (
       <div className="rounded-xl border border-neutral-200">
+        {/* Row */}
         <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-medium">
-                {m.type === 'email' && (m.email || 'Email')}
-                {m.type === 'phone' && (m.phone_number || 'Phone')}
-                {m.type === 'totp' && 'Authenticator app'}
-                {m.type === 'push-notification' && 'Push device'}
-                {m.type === 'password' && 'Password'}
+              <span className={cx('inline-flex h-6 w-6 items-center justify-center rounded-lg', tone.bg50, tone.text600)}>
+                {iconFor(m.type)}
               </span>
-              {m.type !== 'password' && (verified ? <Tag color="green"><CheckCircle2 className="mr-1 h-3.5 w-3.5" />verified</Tag> : <Tag>unverified</Tag>)}
-              <Tag color="blue">{usageStr(m)}</Tag>
+              <span className="font-medium">{labelFor(m)}</span>
+              {m.type !== 'password' && (m.confirmed ? (
+                <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                  <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> verified
+                </span>
+              ) : (
+                <span className="inline-flex items-center rounded-full border border-neutral-200 bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-neutral-700">
+                  unverified
+                </span>
+              ))}
+              <span className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-700">
+                {usageStr}
+              </span>
             </div>
-            <div className="mt-1 text-xs text-neutral-500">{m.created_at ? `Created ${fmtDate(m.created_at)}` : 'Created date not available'}</div>
-            <div className="mt-1 text-xs text-neutral-500 break-all">ID: {m.id}</div>
+            <div className="mt-1 text-xs text-neutral-500">
+              {m.created_at ? `Created ${fmtDate(m.created_at)}` : 'Created date not available'}
+            </div>
+            <div className="mt-1 break-all text-[11px] text-neutral-400">ID: {m.id}</div>
           </div>
+
           <div className="flex items-center gap-2">
-            {(m.type === 'email' || m.type === 'phone') && (
-              <Action onClick={() => setOpenManage(s => ({ ...s, [m.id]: !open }))}>
-                {open ? 'Hide' : 'Manage'}
-              </Action>
-            )}
-            {removable && (
-              <Action onClick={() => onRemove(m.id)} danger>
-                <Trash2 className="mr-1 inline h-3.5 w-3.5" />Remove
-              </Action>
+            {m.type !== 'password' && (
+              <button
+                type="button"
+                onClick={() => openConfirm(m.id)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100"
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Delete
+              </button>
             )}
           </div>
         </div>
-        {open && (m.type === 'email' || m.type === 'phone') && (
+
+        {/* Delete confirm */}
+        {confirm.open && (
           <div className="border-t border-neutral-100 p-4">
-            <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
-              <Action onClick={() => (m.type === 'email' ? apiChallengeEmail(m.id) : apiChallengePhone(m.id))}>
-                <Send className="mr-1 inline h-3.5 w-3.5" /> Send code
-              </Action>
-              <div className="flex items-center gap-2">
-                <input
-                  value={verifyById[m.id] || ''}
-                  onChange={e => setVerifyById(s => ({ ...s, [m.id]: e.target.value }))}
-                  placeholder="Enter code"
-                  className="h-9 w-44 rounded-lg border border-neutral-200 px-2 text-sm outline-none focus:ring-2 focus:ring-rose-200"
-                />
-                <Primary onClick={() => (m.type === 'email'
-                  ? apiVerifyEmail(m.id, verifyById[m.id] || '')
-                  : apiVerifyPhone(m.id, verifyById[m.id] || '')
-                )}>
-                  Verify
-                </Primary>
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-600" />
+                <div className="text-xs text-amber-900">
+                  <div className="font-medium">Are you sure?</div>
+                  <div className="mt-0.5">
+                    Removing this authentication method could make it harder to sign in, especially if it is your only factor.
+                  </div>
+                  {confirm.error && (
+                    <div className="mt-2 rounded-lg border border-amber-200 bg-white/60 p-2 text-[11px] text-amber-800">
+                      {confirm.error}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => doDelete(m.id, { force: false })}
+                  disabled={confirm.busy}
+                  className={cx('inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-medium text-white shadow-sm transition', tone.bg600, tone.hoverBg500, confirm.busy && 'opacity-60 cursor-not-allowed')}
+                >
+                  {confirm.busy ? 'Deleting…' : 'Delete'}
+                </button>
+                {confirm.needsForce && (
+                  <button
+                    type="button"
+                    onClick={() => doDelete(m.id, { force: true })}
+                    disabled={confirm.busy}
+                    className="inline-flex items-center rounded-lg border border-red-300 bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-500 disabled:opacity-60"
+                  >
+                    Continue anyway
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => closeConfirm(m.id)}
+                  className="inline-flex items-center rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-800 hover:bg-neutral-50"
+                >
+                  Cancel
+                </button>
               </div>
             </div>
           </div>
@@ -222,221 +277,238 @@ export default function AuthFactorsPanel() {
     )
   }
 
-  return (
-    <div className="space-y-6">
-      <HeaderCard />
-      {err && <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
-      {loading && <div className="text-sm text-neutral-500">Loading...</div>}
-
-      {/* Password */}
-      <Section
-        icon={<Lock className={cx('h-4 w-4', tone.text600)} />}
-        title="Password"
-        count={passwords.length}
-        enabledForTenant={true /* password is always available */}
-        isOpen={openAdd.password}
-        onToggle={() => setOpenAdd(s => ({ ...s, password: !s.password }))}
-        addLabel="Change password"
-        addArea={(
-          <div className="rounded-xl border border-neutral-200 p-4">
-            <div className="text-sm font-medium">Update password</div>
-            <p className="mt-1 text-xs text-neutral-600">Enter your current password, then a new one.</p>
-            <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
-              <input type="password" value={pwdCurrent} onChange={e=>setPwdCurrent(e.target.value)} placeholder="Current password" className="h-9 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-rose-200" />
-              <input type="password" value={pwdNew1}    onChange={e=>setPwdNew1(e.target.value)}    placeholder="New password"     className="h-9 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-rose-200" />
-              <input type="password" value={pwdNew2}    onChange={e=>setPwdNew2(e.target.value)}    placeholder="Confirm new password" className="h-9 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-rose-200" />
+  // ---------------- Add mock screens (console only) ---------------------------
+  const AddEmailScreen = () => {
+    const [email, setEmail] = useState('')
+    const [code, setCode] = useState('')
+    const [step, setStep] = useState('prepare')
+    return (
+      <Overlay title={step === 'prepare' ? 'Add email' : 'Verify email'} onClose={() => setAddFlow(null)}>
+        {step === 'prepare' ? (
+          <div className="space-y-4">
+            <div className="text-sm text-neutral-700">Enter your email. We will send a 6 digit code.</div>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-rose-200" />
+            <div className="flex gap-2">
+              <button className={cx('rounded-lg px-3 py-2 text-xs font-medium text-white', tone.bg600, tone.hoverBg500)} onClick={() => { console.log('mock:addEmail:sendCode', { email }); setStep('verify') }}>Send code</button>
+              <button className="rounded-lg border border-neutral-200 px-3 py-2 text-xs font-medium hover:bg-neutral-50" onClick={() => setAddFlow(null)}>Cancel</button>
             </div>
-            {pwdMsg && <div className="mt-2 text-xs text-neutral-600">{pwdMsg}</div>}
-            <div className="mt-3 flex items-center gap-2">
-              <Primary onClick={onUpdatePassword}>Save password</Primary>
-              <Action onClick={() => { setPwdCurrent(''); setPwdNew1(''); setPwdNew2(''); setPwdMsg(''); setOpenAdd(s=>({...s,password:false})) }}>Cancel</Action>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="text-sm text-neutral-700">Enter the code sent to {email || 'your email'}.</div>
+            <input inputMode="numeric" pattern="[0-9]*" placeholder="123456" value={code} onChange={(e) => setCode(e.target.value)} className="h-10 w-40 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-rose-200 tracking-widest" />
+            <div className="flex gap-2">
+              <button className={cx('rounded-lg px-3 py-2 text-xs font-medium text-white', tone.bg600, tone.hoverBg500)} onClick={() => { console.log('mock:addEmail:verify', { email, code }); setMethods(prev => [...prev, { id: 'email|'+Math.random().toString(36).slice(2), type:'email', email, created_at:new Date().toISOString(), confirmed:true, usage:['secondary'] }]); setAddFlow(null) }}>Verify</button>
+              <button className="rounded-lg border border-neutral-200 px-3 py-2 text-xs font-medium hover:bg-neutral-50" onClick={() => console.log('mock:addEmail:resend', { email })}>Resend</button>
             </div>
           </div>
         )}
-      >
-        {passwords.length === 0
-          ? <div className="rounded-xl border border-dashed border-neutral-300 p-4 text-sm text-neutral-600">No password factor found. Use Change password to create/reset it.</div>
-          : <div className="space-y-3">{passwords.map(m => <ManageRow key={m.id} m={m} />)}</div>
-        }
-      </Section>
+      </Overlay>
+    )
+  }
+
+  const AddPhoneScreen = () => {
+    const [phone, setPhone] = useState('')
+    const [code, setCode] = useState('')
+    const [step, setStep] = useState('prepare')
+    return (
+      <Overlay title={step === 'prepare' ? 'Add phone' : 'Verify phone'} onClose={() => setAddFlow(null)}>
+        {step === 'prepare' ? (
+          <div className="space-y-4">
+            <div className="text-sm text-neutral-700">Enter your number. We will text a 6 digit code.</div>
+            <input type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 555 123 4567" className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-rose-200" />
+            <div className="flex gap-2">
+              <button className={cx('rounded-lg px-3 py-2 text-xs font-medium text-white', tone.bg600, tone.hoverBg500)} onClick={() => { console.log('mock:addPhone:sendCode', { phone }); setStep('verify') }}>Send code</button>
+              <button className="rounded-lg border border-neutral-200 px-3 py-2 text-xs font-medium hover:bg-neutral-50" onClick={() => setAddFlow(null)}>Cancel</button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="text-sm text-neutral-700">Enter the code sent to {phone || 'your phone'}.</div>
+            <input inputMode="numeric" pattern="[0-9]*" placeholder="123456" value={code} onChange={(e) => setCode(e.target.value)} className="h-10 w-40 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-rose-200 tracking-widest" />
+            <div className="flex gap-2">
+              <button className={cx('rounded-lg px-3 py-2 text-xs font-medium text-white', tone.bg600, tone.hoverBg500)} onClick={() => { console.log('mock:addPhone:verify', { phone, code }); setMethods(prev => [...prev, { id: 'phone|'+Math.random().toString(36).slice(2), type:'phone', phone_number:phone, created_at:new Date().toISOString(), confirmed:true, usage:['secondary'] }]); setAddFlow(null) }}>Verify</button>
+              <button className="rounded-lg border border-neutral-200 px-3 py-2 text-xs font-medium hover:bg-neutral-50" onClick={() => console.log('mock:addPhone:resend', { phone })}>Resend</button>
+            </div>
+          </div>
+        )}
+      </Overlay>
+    )
+  }
+
+  const AddTotpScreen = () => {
+    const [secret] = useState(randBase32(20))
+    const [code, setCode] = useState('')
+    const [step, setStep] = useState('prepare')
+    return (
+      <Overlay title={step === 'prepare' ? 'Set up authenticator app' : 'Verify authenticator'} onClose={() => setAddFlow(null)}>
+        {step === 'prepare' ? (
+          <div className="space-y-4 text-sm">
+            <div>Scan or enter this secret in your app.</div>
+            <div className="rounded-md border border-neutral-300 bg-white px-2 py-1 text-[11px] font-mono w-fit">{secret}</div>
+            <div className="flex gap-2">
+              <button className={cx('rounded-lg px-3 py-2 text-xs font-medium text-white', tone.bg600, tone.hoverBg500)} onClick={() => { console.log('mock:addTotp:readyToVerify', { secret }); setStep('verify') }}>I scanned it</button>
+              <button className="rounded-lg border border-neutral-200 px-3 py-2 text-xs font-medium hover:bg-neutral-50" onClick={() => console.log('mock:addTotp:showQr', { secret })}>Show QR</button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4 text-sm">
+            <div>Enter the current 6 digit code from your app.</div>
+            <input inputMode="numeric" pattern="[0-9]*" placeholder="123456" value={code} onChange={(e) => setCode(e.target.value)} className="h-10 w-40 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-rose-200 tracking-widest" />
+            <div className="flex gap-2">
+              <button className={cx('rounded-lg px-3 py-2 text-xs font-medium text-white', tone.bg600, tone.hoverBg500)} onClick={() => { console.log('mock:addTotp:verify', { secret, code }); setMethods(prev => [...prev, { id: 'totp|'+Math.random().toString(36).slice(2), type:'totp', created_at:new Date().toISOString(), confirmed:true, usage:['secondary'] }]); setAddFlow(null) }}>Verify</button>
+            </div>
+          </div>
+        )}
+      </Overlay>
+    )
+  }
+
+  const AddPushScreen = () => {
+    const [pairCode, setPairCode] = useState(randPair())
+    const [step, setStep] = useState('prepare')
+    return (
+      <Overlay title={step === 'prepare' ? 'Pair push device' : 'Confirm pairing'} onClose={() => setAddFlow(null)}>
+        {step === 'prepare' ? (
+          <div className="space-y-4 text-sm">
+            <div>Open the app on your device and enter this code to begin pairing.</div>
+            <div className="rounded-md border border-neutral-300 bg-white px-2 py-1 text-[11px] font-mono w-fit">{pairCode}</div>
+            <div className="flex gap-2">
+              <button className={cx('rounded-lg px-3 py-2 text-xs font-medium text-white', tone.bg600, tone.hoverBg500)} onClick={() => { console.log('mock:addPush:startPairing', { pairCode }); setStep('verify') }}>Start pairing</button>
+              <button className="rounded-lg border border-neutral-200 px-3 py-2 text-xs font-medium hover:bg-neutral-50" onClick={() => { const next = randPair(); setPairCode(next); console.log('mock:addPush:newCode', { pairCode: next }) }}>New code</button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4 text-sm">
+            <div>Approve the pairing on your device, then confirm here.</div>
+            <div className="flex gap-2">
+              <button className={cx('rounded-lg px-3 py-2 text-xs font-medium text-white', tone.bg600, tone.hoverBg500)} onClick={() => { console.log('mock:addPush:markPaired', { pairCode }); setMethods(prev => [...prev, { id: 'push|'+Math.random().toString(36).slice(2), type:'push-notification', created_at:new Date().toISOString(), confirmed:true, usage:['secondary'] }]); setAddFlow(null) }}>Mark as paired</button>
+            </div>
+          </div>
+        )}
+      </Overlay>
+    )
+  }
+
+  // Helpers for mocks
+  function randBase32(n=16){
+    const alphabet='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
+    return Array.from({length:n},()=>alphabet[Math.floor(Math.random()*alphabet.length)]).join('')
+  }
+  function randPair(){
+    const n = Math.floor(100+Math.random()*900)
+    return `${randBase32(3)}-${n}`
+  }
+
+  // ---------------------------- Render ---------------------------------------
+  return (
+    <div className="space-y-6" onClickCapture={stopHashAnchor} style={{ overflowAnchor: 'none' }}>
+      {/* Header */}
+      <div className="rounded-2xl border border-neutral-200 bg-white">
+        <div className="flex items-center justify-between gap-3 p-5">
+          <div className="flex items-center gap-2">
+            <Shield className={cx('h-5 w-5', tone.text600)} />
+            <div className="text-base font-semibold">Authentication methods</div>
+          </div>
+          <button
+            type="button"
+            onClick={load}
+            className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-1.5 text-xs hover:bg-neutral-50"
+          >
+            <RefreshCw className="h-3.5 w-3.5" /> Refresh
+          </button>
+        </div>
+        {err && (
+          <div className="mx-5 mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+            {err}
+          </div>
+        )}
+      </div>
+
+      {loading && (
+        <div className="rounded-2xl border border-neutral-200 bg-white p-5 text-sm text-neutral-600">
+          Loading methods…
+        </div>
+      )}
 
       {/* Email */}
-      <Section
-        icon={<Mail className={cx('h-4 w-4', tone.text600)} />}
-        title="Email"
-        count={emails.length}
-        enabledForTenant={enabled.has('email')}
-        isOpen={openAdd.email}
-        onToggle={() => setOpenAdd(s => ({ ...s, email: !s.email }))}
-        addArea={(
-          <div className="rounded-xl border border-neutral-200 p-4">
-            <div className="text-sm font-medium">Add an email factor</div>
-            <p className="mt-1 text-xs text-neutral-600">We will send a verification to the address.</p>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <input type="email" value={emailInput} onChange={e=>setEmailInput(e.target.value)} placeholder="name@example.com" className="h-9 w-64 rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-rose-200" />
-              <Primary onClick={onAddEmail}><Plus className="mr-1 inline h-3.5 w-3.5" />Add</Primary>
-              <Action onClick={() => { setEmailInput(''); setEmailPendingId(''); setEmailAddCode(''); setEmailAddMsg(''); setOpenAdd(s=>({...s,email:false})) }}>Cancel</Action>
-            </div>
-            {emailPendingId && (
-              <div className="mt-3 rounded-lg border border-neutral-200 p-3">
-                {emailAddMsg && <div className="mb-2 text-xs text-neutral-600">{emailAddMsg}</div>}
-                <div className="flex flex-wrap items-center gap-2">
-                  <Action onClick={onResendEmail}><RotateCcw className="mr-1 inline h-3.5 w-3.5" />Resend</Action>
-                  <input value={emailAddCode} onChange={e=>setEmailAddCode(e.target.value)} placeholder="Enter code" className="h-9 w-44 rounded-lg border border-neutral-200 px-2 text-sm outline-none focus:ring-2 focus:ring-rose-200" />
-                  <Primary onClick={onVerifyEmail}>Verify</Primary>
-                </div>
-              </div>
-            )}
+      <Section title="Email" count={emails.length}>
+        {emails.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-neutral-300 p-4 text-sm text-neutral-600">
+            No email methods.
           </div>
-        )}
-      >
-        {emails.length === 0
-          ? <div className="rounded-xl border border-dashed border-neutral-300 p-4 text-sm text-neutral-600">No email factors. Use Add factor to create one.</div>
-          : <div className="space-y-3">{emails.map(m => <ManageRow key={m.id} m={m} />)}</div>
-        }
+        ) : emails.map(m => <MethodRow key={m.id} m={m} />)}
+        {/* Add action in-body, not in header */}
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={() => setAddFlow({ kind: 'email' })}
+            className={cx('inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white', tone.bg600, tone.hoverBg500)}
+          >
+            <Plus className="h-3.5 w-3.5" /> Add email
+          </button>
+        </div>
       </Section>
 
       {/* Phone */}
-      <Section
-        icon={<Phone className={cx('h-4 w-4', tone.text600)} />}
-        title="Phone"
-        count={phones.length}
-        enabledForTenant={enabled.has('phone')}
-        isOpen={openAdd.phone}
-        onToggle={() => setOpenAdd(s => ({ ...s, phone: !s.phone }))}
-        addArea={(
-          <div className="rounded-xl border border-neutral-200 p-4">
-            <div className="text-sm font-medium">Add a phone factor</div>
-            <p className="mt-1 text-xs text-neutral-600">We will send an SMS code to verify.</p>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <input type="tel" value={phoneInput} onChange={e=>setPhoneInput(e.target.value)} placeholder="+1 555 123 4567" className="h-9 w-64 rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:ring-2 focus:ring-rose-200" />
-              <Primary onClick={onAddPhone}><Plus className="mr-1 inline h-3.5 w-3.5" />Add</Primary>
-              <Action onClick={() => { setPhoneInput(''); setPhonePendingId(''); setPhoneAddCode(''); setPhoneAddMsg(''); setOpenAdd(s=>({...s,phone:false})) }}>Cancel</Action>
-            </div>
-            {phonePendingId && (
-              <div className="mt-3 rounded-lg border border-neutral-200 p-3">
-                {phoneAddMsg && <div className="mb-2 text-xs text-neutral-600">{phoneAddMsg}</div>}
-                <div className="flex flex-wrap items-center gap-2">
-                  <Action onClick={onResendPhone}><RotateCcw className="mr-1 inline h-3.5 w-3.5" />Resend</Action>
-                  <input value={phoneAddCode} onChange={e=>setPhoneAddCode(e.target.value)} placeholder="Enter code" className="h-9 w-44 rounded-lg border border-neutral-200 px-2 text-sm outline-none focus:ring-2 focus:ring-rose-200" />
-                  <Primary onClick={onVerifyPhone}>Verify</Primary>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      >
-        {phones.length === 0
-          ? <div className="rounded-xl border border-dashed border-neutral-300 p-4 text-sm text-neutral-600">No phone factors. Use Add factor to create one.</div>
-          : <div className="space-y-3">{phones.map(m => <ManageRow key={m.id} m={m} />)}</div>
-        }
+      <Section title="Phone" count={phones.length}>
+        {phones.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-neutral-300 p-4 text-sm text-neutral-600">No phone methods.</div>
+        ) : phones.map(m => <MethodRow key={m.id} m={m} />)}
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={() => setAddFlow({ kind: 'phone' })}
+            className={cx('inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white', tone.bg600, tone.hoverBg500)}
+          >
+            <Plus className="h-3.5 w-3.5" /> Add phone
+          </button>
+        </div>
       </Section>
 
       {/* TOTP */}
-      <Section
-        icon={<KeyRound className={cx('h-4 w-4', tone.text600)} />}
-        title="TOTP"
-        count={totps.length}
-        enabledForTenant={enabled.has('totp')}
-        isOpen={openAdd.totp}
-        onToggle={() => setOpenAdd(s => ({ ...s, totp: !s.totp }))}
-        addArea={(
-          <div className="rounded-xl border border-neutral-200 p-4">
-            {!totpPending ? (
-              <>
-                <div className="text-sm font-medium">Add a TOTP factor</div>
-                <p className="mt-1 text-xs text-neutral-600">Use an authenticator app. Scan the QR or enter the secret, then enter a 6 digit code.</p>
-                <div className="mt-2 flex items-center gap-2">
-                  <Primary onClick={onStartTotp}><Plus className="mr-1 inline h-3.5 w-3.5" />Start</Primary>
-                  <Action onClick={() => { setOpenAdd(s=>({...s, totp:false})); setTotpPending(null); setTotpCode('') }}>Cancel</Action>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="flex items-center gap-2 text-sm font-medium"><QrCode className="h-4 w-4" /> Finish TOTP setup</div>
-                <div className="mt-2 rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-xs break-words">
-                  <div><span className="font-medium">Secret:</span> {totpPending.secret}</div>
-                  <div className="mt-1"><span className="font-medium">otpauth URL:</span> {totpPending.otpauth_url}</div>
-                </div>
-                <div className="mt-3 flex items-center gap-2">
-                  <input value={totpCode} onChange={e=>setTotpCode(e.target.value)} placeholder="Enter 6 digit code" className="h-9 w-48 rounded-lg border border-neutral-200 px-2 text-sm outline-none focus:ring-2 focus:ring-rose-200" />
-                  <Primary onClick={onConfirmTotp}>Confirm</Primary>
-                  <Action onClick={() => { setTotpPending(null); setTotpCode('') }}>Cancel</Action>
-                </div>
-              </>
-            )}
-          </div>
-        )}
-      >
-        {totps.length === 0
-          ? <div className="rounded-xl border border-dashed border-neutral-300 p-4 text-sm text-neutral-600">No TOTP factors. Use Add factor to create one.</div>
-          : <div className="space-y-3">{totps.map(m => (
-              <div key={m.id} className="rounded-xl border border-neutral-200 p-4">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <div className="flex items-center gap-2"><span className="font-medium">Authenticator app</span><Tag color="blue">{usageStr(m)}</Tag></div>
-                    <div className="mt-1 text-xs text-neutral-500">{m.created_at ? `Created ${fmtDate(m.created_at)}` : 'Created date not available'}</div>
-                    <div className="mt-1 text-xs text-neutral-500 break-all">ID: {m.id}</div>
-                  </div>
-                  <Action onClick={() => onRemove(m.id)} danger><Trash2 className="mr-1 inline h-3.5 w-3.5" />Remove</Action>
-                </div>
-              </div>
-            ))}</div>
-        }
+      <Section title="TOTP" count={totps.length}>
+        {totps.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-neutral-300 p-4 text-sm text-neutral-600">No authenticator app methods.</div>
+        ) : totps.map(m => <MethodRow key={m.id} m={m} />)}
+        <div className="pt-2">
+          <button type="button" onClick={() => setAddFlow({ kind: 'totp' })} className={cx('inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white', tone.bg600, tone.hoverBg500)}>
+            <Plus className="h-3.5 w-3.5" /> Set up authenticator
+          </button>
+        </div>
       </Section>
 
       {/* Push */}
-      <Section
-        icon={<Smartphone className={cx('h-4 w-4', tone.text600)} />}
-        title="Push"
-        count={pushes.length}
-        enabledForTenant={enabled.has('push-notification')}
-        isOpen={openAdd.push}
-        onToggle={() => setOpenAdd(s => ({ ...s, push: !s.push }))}
-        addArea={(
-          <div className="rounded-xl border border-neutral-200 p-4">
-            {!pushPending ? (
-              <>
-                <div className="text-sm font-medium">Add a push factor</div>
-                <p className="mt-1 text-xs text-neutral-600">You will get an activation code to enter in the mobile app.</p>
-                <div className="mt-2 flex items-center gap-2">
-                  <Primary onClick={onStartPush}><Plus className="mr-1 inline h-3.5 w-3.5" />Start</Primary>
-                  <Action onClick={() => { setOpenAdd(s=>({...s,push:false})); setPushPending(null); setPushCode('') }}>Cancel</Action>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="text-sm font-medium">Finish push setup</div>
-                <div className="mt-2 rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-xs">
-                  <span className="font-medium">Activation code:</span> {pushPending.activation_code}
-                </div>
-                <p className="mt-2 text-xs text-neutral-600">Enter the code in your app. If your backend needs a confirmation code, enter it below.</p>
-                <div className="mt-3 flex items-center gap-2">
-                  <input value={pushCode} onChange={e=>setPushCode(e.target.value)} placeholder="Optional confirmation code" className="h-9 w-64 rounded-lg border border-neutral-200 px-2 text-sm outline-none focus:ring-2 focus:ring-rose-200" />
-                  <Primary onClick={onConfirmPush}>Done</Primary>
-                  <Action onClick={() => { setPushPending(null); setPushCode('') }}>Cancel</Action>
-                </div>
-              </>
-            )}
-          </div>
-        )}
-      >
-        {pushes.length === 0
-          ? <div className="rounded-xl border border-dashed border-neutral-300 p-4 text-sm text-neutral-600">No push factors. Use Add factor to create one.</div>
-          : <div className="space-y-3">{pushes.map(m => (
-              <div key={m.id} className="rounded-xl border border-neutral-200 p-4">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <div className="flex items-center gap-2"><span className="font-medium">Push device</span><Tag color="blue">{usageStr(m)}</Tag></div>
-                    <div className="mt-1 text-xs text-neutral-500">{m.created_at ? `Created ${fmtDate(m.created_at)}` : 'Created date not available'}</div>
-                    <div className="mt-1 text-xs text-neutral-500 break-all">ID: {m.id}</div>
-                  </div>
-                  <Action onClick={() => onRemove(m.id)} danger><Trash2 className="mr-1 inline h-3.5 w-3.5" />Remove</Action>
-                </div>
-              </div>
-            ))}</div>
-        }
+      <Section title="Push" count={pushes.length}>
+        {pushes.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-neutral-300 p-4 text-sm text-neutral-600">No push devices.</div>
+        ) : pushes.map(m => <MethodRow key={m.id} m={m} />)}
+        <div className="pt-2">
+          <button type="button" onClick={() => setAddFlow({ kind: 'push' })} className={cx('inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white', tone.bg600, tone.hoverBg500)}>
+            <Plus className="h-3.5 w-3.5" /> Pair device
+          </button>
+        </div>
       </Section>
+
+      {/* Password (view only) */}
+      <div className="opacity-70">
+        <div className="text-xs text-neutral-500 px-1">Password (view only)</div>
+        <div className="mt-2">
+          {pwds.length === 0 ? (
+            <div className="rounded-2xl border border-neutral-200 bg-white p-5 text-sm text-neutral-600">No password method found.</div>
+          ) : (
+            <div className="rounded-2xl border border-neutral-200 bg-white p-5 space-y-3">
+              {pwds.map(m => <MethodRow key={m.id} m={m} />)}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Render mock overlays */}
+      {addFlow?.kind === 'email' && <AddEmailScreen />}
+      {addFlow?.kind === 'phone' && <AddPhoneScreen />}
+      {addFlow?.kind === 'totp' && <AddTotpScreen />}
+      {addFlow?.kind === 'push' && <AddPushScreen />}
     </div>
   )
 }
