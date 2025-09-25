@@ -31,7 +31,7 @@ export async function POST(req) {
       scope:         process.env.AUTH0_SCOPE || 'openid profile email',
     }
 
-    const issuer = getIssuer().replace(/\/+$/, '')
+const issuer = 'https://oktahub3.us.auth0.com';
     const r = await fetch(`${issuer}/oauth/token`, {
       method: 'POST',
       headers: {
