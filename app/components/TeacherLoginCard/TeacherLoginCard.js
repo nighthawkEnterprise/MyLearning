@@ -141,18 +141,42 @@ export default function TeacherLoginCard({
       setLoading(true)
       if (!mfa.token) throw new Error('Missing mfa_token in state')
       if (!mfa.phone) throw new Error('Enter a phone number')
-
-      const assoc = await axios.post('/api/teacher/mfa/associate', {
+  
+      const { data } = await axios.post('/api/teacher/mfa/associate', {
         mfa_token: mfa.token,
         type: 'oob',
         oob_channel: 'sms',
         phone_number: mfa.phone,
       })
-      const authenticatorId = assoc.data?.authenticator_id
-      if (!authenticatorId) throw new Error('No authenticator_id from associate')
-
-      // Immediately challenge and go to verify
-      await startPhoneChallenge(mfa.token, authenticatorId)
+  
+      // IMPORTANT: associate for SMS returns an oob_code; use it directly
+      const oobCode = data?.oob_code
+      const authenticatorId = data?.authenticator_id || ''
+      if (!oobCode) {
+        // Fallback: if your tenant didn’t return an oob_code, do an explicit challenge
+        const ch = await axios.post('/api/teacher/mfa/challenge', {
+          mfa_token: mfa.token,
+          authenticator_id: authenticatorId || undefined,
+          prefer_channel: 'sms',
+        })
+        setMfa(s => ({
+          ...s,
+          oobCode: ch.data?.oob_code,
+          authenticatorId: ch.data?.authenticator_id || authenticatorId,
+          bindingMethod: ch.data?.binding_method || 'oob',
+        }))
+      } else {
+        // Normal path: we already have what we need to verify
+        setMfa(s => ({
+          ...s,
+          oobCode,
+          authenticatorId,
+          bindingMethod: data?.binding_method || 'oob',
+        }))
+      }
+  
+      // Move user to the verify screen to enter the 6-digit code
+      setStep('verify-phone')
     } catch (err) {
       const resData = err?.response?.data
       setError(
@@ -164,6 +188,7 @@ export default function TeacherLoginCard({
       setLoading(false)
     }
   }
+  
 
   async function verifyCode() {
     setError('')

@@ -2,37 +2,55 @@
 import { NextResponse } from 'next/server'
 import { getIssuer } from '../../../_auth0'
 
+// tiny form encoder
+function formEncode(obj) {
+  return Object.entries(obj)
+    .filter(([, v]) => v !== undefined && v !== null && v !== '')
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+    .join('&')
+}
+
 export async function POST(req) {
   try {
     const { mfa_token, oob_code, binding_code } = await req.json()
-    if (!mfa_token) return NextResponse.json({ error: 'mfa_token required' }, { status: 400 })
-    if (!oob_code) return NextResponse.json({ error: 'oob_code required' }, { status: 400 })
-    if (!binding_code) return NextResponse.json({ error: 'binding_code required' }, { status: 400 })
 
+    if (!mfa_token) return NextResponse.json({ error: 'mfa_token required' }, { status: 400 })
+    if (!oob_code)   return NextResponse.json({ error: 'oob_code required' }, { status: 400 })
+    // NOTE: binding_code is OPTIONAL (present for SMS, omitted for push)
+
+    // Single grant for both SMS and push:
+    // - SMS: include binding_code
+    // - Push: omit binding_code and poll until Auth0 returns tokens
     const params = {
       grant_type: 'http://auth0.com/oauth/grant-type/mfa-oob',
       mfa_token,
       oob_code,
-      binding_code,
-      client_id: process.env.AUTH0_CLIENT_ID || '',
+      ...(binding_code ? { binding_code } : {}),
+      client_id:     process.env.AUTH0_CLIENT_ID || '',
       client_secret: process.env.AUTH0_CLIENT_SECRET || '',
-      // audience: process.env.AUTH0_AUDIENCE || 'https://oktahub3.us.auth0.com/me/',
-      scope: process.env.AUTH0_SCOPE || 'openid profile email',
+      scope:         process.env.AUTH0_SCOPE || 'openid profile email',
     }
-    console.log("PARAMS:", params);
-    const r = await fetch(`https://oktahub3.us.auth0.com/oauth/token`, {
+
+    const issuer = getIssuer().replace(/\/+$/, '')
+    const r = await fetch(`${issuer}/oauth/token`, {
       method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: Object.entries(params)
-        .filter(([, v]) => v !== undefined && v !== null && v !== '')
-        .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
-        .join('&'),
+      headers: {
+        'content-type': 'application/x-www-form-urlencoded',
+        // Optional but mirrors Auth0 example for push:
+        // lets Auth0 accept mfa_token via header as well
+        Authorization: `Bearer ${mfa_token}`,
+      },
+      body: formEncode(params),
     })
 
     const data = await r.json()
+
+    // For push, while the user hasn't approved yet Auth0 may return 400/401 with
+    // errors like authorization_pending / invalid_grant. We pass that through
+    // so the client can keep polling.
     if (!r.ok) return NextResponse.json(data, { status: r.status })
 
-    // set cookie like login route so redirect works
+    // Success: set cookies like your login route
     const res = NextResponse.json({ ok: true })
     if (data?.access_token) {
       res.cookies.set('access_token', data.access_token, {
@@ -54,7 +72,7 @@ export async function POST(req) {
     }
     return res
   } catch (e) {
-    console.error('verify-oob route error:', e)
+    console.error('verify route error:', e)
     return NextResponse.json({ error: 'verify failed' }, { status: 500 })
   }
 }
