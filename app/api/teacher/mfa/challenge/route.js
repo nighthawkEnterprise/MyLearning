@@ -107,7 +107,8 @@ export async function POST(req) {
     }
 
     // --- Issue the challenge ---------------------------------------------------
-    const challengeUrl = `${issuer()}/mfa/challenge`
+    const challengeUrl = `${issuer()}/mfa/challenge`;
+
     const challengeBody = {
       challenge_type,           // 'oob'
       authenticator_id: chosen, // sms|... or push|...

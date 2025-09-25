@@ -9,7 +9,7 @@ export async function POST(req) {
     if (type === 'oob' && oob_channel === 'sms' && !phone_number) {
       return NextResponse.json({ error: 'phone_number required for sms' }, { status: 400 })
     }
-
+    console.log("GET ISSUER: ", getIssuer());
     const r = await fetch(`${getIssuer()}/mfa/associate`, {
       method: 'POST',
       headers: {
