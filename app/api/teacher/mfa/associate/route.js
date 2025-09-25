@@ -12,7 +12,7 @@ export async function POST(req) {
       return NextResponse.json({ error: 'phone_number required for sms' }, { status: 400 })
     }
     console.log("GET ISSUER: ", getIssuer());
-    const r = await fetch(`https://oktahub3.us.auth0.com/mfa/associate`, {
+    const r = await fetch(`https://auth.my-learnings.net/mfa/associate`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',

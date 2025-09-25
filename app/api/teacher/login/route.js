@@ -28,7 +28,7 @@ export async function POST(req) {
       username,
       password,
       // use env if set, else default to My Account API per your example
-      audience: 'https://oktahub3.us.auth0.com/me/',
+      audience: 'https://auth.my-learnings.net/me/',
       scope:
         process.env.AUTH0_SCOPE ??
         'openid profile email offline_access read:me:authentication_methods create:me:authentication_methods read:me:factors',
@@ -40,7 +40,7 @@ export async function POST(req) {
     console.log("PAYLOAD: ", payload);
   
 
-    const upstream = await fetch(`https://oktahub3.us.auth0.com/oauth/token`, {
+    const upstream = await fetch(`https://auth.my-learnings.net/oauth/token`, {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: formEncode(payload),

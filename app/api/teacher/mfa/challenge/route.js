@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server'
 import { getIssuer } from '../../../_auth0'
 
-const issuer = 'https://oktahub3.us.auth0.com';
+const issuer = 'https://auth.my-learnings.net';
 // console.log('getIssuer: ', getIssuer());
 
 // --- Debug helpers -----------------------------------------------------------
