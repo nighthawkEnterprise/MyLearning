@@ -10,6 +10,8 @@ function formEncode(obj) {
 }
 
 export async function POST(req) {
+  console.log('[teacher/login] getIssuer():', getIssuer())
+
   try {
     const { username, password } = await req.json()
     if (!username || !password) {
