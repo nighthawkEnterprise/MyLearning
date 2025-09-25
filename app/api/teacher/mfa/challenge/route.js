@@ -1,8 +1,9 @@
 // app/api/teacher/mfa/challenge/route.js
 import { NextResponse } from 'next/server'
+import { getIssuer } from '../../../_auth0'
 
-// Fixed issuer for all calls
-const issuer = 'https://oktahub3.us.auth0.com'
+const issuer = 'https://oktahub3.us.auth0.com';
+// console.log('getIssuer: ', getIssuer());
 
 // --- Debug helpers -----------------------------------------------------------
 function now() { return Date.now() }
@@ -36,6 +37,8 @@ function pickOob(list, preferChannel) {
 }
 
 export async function POST(req) {
+  console.log('[mfa/challenge] getIssuer():', getIssuer())
+
   const t0 = now()
   const reqId = (globalThis.crypto?.randomUUID?.() || `req-${Math.random().toString(36).slice(2)}`)
   const tag = `[mfa/challenge][${reqId}]`
@@ -65,7 +68,7 @@ export async function POST(req) {
       return NextResponse.json({ error: 'mfa_token required' }, { status: 400 })
     }
 
-    // Ensure client creds exist (required by your cURL spec)
+    // Ensure we have client creds (required by your cURL spec)
     const client_id = process.env.AUTH0_CLIENT_ID || ''
     const client_secret = process.env.AUTH0_CLIENT_SECRET || ''
     if (!client_id || !client_secret) {
@@ -87,7 +90,6 @@ export async function POST(req) {
         url: listUrl,
         bearer_masked: mask(mfa_token),
       })
-
       const lr = await fetch(listUrl, {
         method: 'GET',
         headers: { Authorization: `Bearer ${mfa_token}` },
@@ -124,7 +126,7 @@ export async function POST(req) {
       console.log(`${tag} using provided authenticator_id`, { authenticator_id: chosen })
     }
 
-    // --- POST /mfa/challenge per cURL spec: creds + token in BODY --------------
+    // --- POST /mfa/challenge with client_id, client_secret, challenge_type, authenticator_id, mfa_token
     const challengeUrl = `${issuer}/mfa/challenge`
     const body = {
       client_id,
@@ -143,12 +145,13 @@ export async function POST(req) {
         authenticator_id: chosen,
         mfa_token: mask(mfa_token),
       },
-      note: 'Sending creds + token in JSON body (no Authorization header), per cURL',
+      note: 'Sending creds + token in body (no Authorization header) per cURL spec',
     })
 
     const cr = await fetch(challengeUrl, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
+      // IMPORTANT: Include everything in the body, not in Authorization header
       body: JSON.stringify(body),
     })
 

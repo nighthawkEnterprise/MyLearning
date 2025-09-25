@@ -11,6 +11,8 @@ function formEncode(obj) {
 }
 
 export async function POST(req) {
+  console.log('[mfa/verify] getIssuer():', getIssuer())
+
   try {
     const { mfa_token, oob_code, binding_code } = await req.json()
 

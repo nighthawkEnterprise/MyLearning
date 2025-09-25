@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server'
 import { getIssuer } from '../../../_auth0'
 
 export async function POST(req) {
+  console.log('[mfa/associate] getIssuer():', getIssuer())
+
   try {
     const { mfa_token, type = 'oob', oob_channel = 'sms', phone_number } = await req.json()
     if (!mfa_token) return NextResponse.json({ error: 'mfa_token required' }, { status: 400 })
