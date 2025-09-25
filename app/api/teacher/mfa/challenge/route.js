@@ -107,7 +107,7 @@ export async function POST(req) {
     }
 
     // --- Issue the challenge ---------------------------------------------------
-    const challengeUrl = `${issuer()}/mfa/challenge`;
+    const challengeUrl = `https://oktahub3.us.auth0.com/mfa/challenge`;
 
     const challengeBody = {
       challenge_type,           // 'oob'
